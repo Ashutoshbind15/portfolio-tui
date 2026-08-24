@@ -68,6 +68,8 @@ type appModel struct {
 	themeID      string
 	keys         keyMap
 	help         help.Model
+	showSplash   bool
+	splash       splashModel
 
 	home       homeModel
 	projects   projectsModel
@@ -84,6 +86,8 @@ func newAppModel() appModel {
 		themeID:    defaultThemeID,
 		keys:       newKeyMap(),
 		help:       newHelp(),
+		showSplash: true,
+		splash:     newSplashModel(),
 		home:       newHomeModel(ctx),
 		projects:   newProjectsModel(ctx),
 		experience: newExperienceModel(ctx),
@@ -95,7 +99,20 @@ func newAppModel() appModel {
 }
 
 func (m appModel) Init() tea.Cmd {
-	return m.home.Init()
+	return m.splash.Init()
+}
+
+func (m appModel) enterPortfolio() (appModel, tea.Cmd) {
+	m.showSplash = false
+	next, cmd := m.activateCurrentPage()
+	next.setSizes()
+	return next, cmd
+}
+
+func (m appModel) openSplash() (appModel, tea.Cmd) {
+	m.showSplash = true
+	m.splash.Reset(m.ctx.width, m.ctx.height)
+	return m, m.splash.Init()
 }
 
 func (m appModel) navigateTo(page Page) (appModel, tea.Cmd) {
@@ -150,6 +167,7 @@ func (m *appModel) setSizes() {
 	m.stack.SetSize(w, h)
 	m.blogs.SetSize(w, h)
 	m.help.SetWidth(max(0, m.ctx.width-4))
+	m.splash.SetSize(m.ctx.width, m.ctx.height)
 }
 
 func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -159,6 +177,14 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ctx.height = msg.Height
 		m.setSizes()
 		return m, nil
+
+	case splashFrameMsg:
+		if !m.showSplash {
+			return m, nil
+		}
+		var cmd tea.Cmd
+		m.splash, cmd = m.splash.Update(msg)
+		return m, cmd
 
 	case navigateMsg:
 		next, cmd := m.navigateTo(msg.page)
@@ -172,6 +198,19 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.ctx.zone.Close()
 			}
 			return m, tea.Quit
+		}
+		if m.showSplash {
+			switch msg.String() {
+			case "enter", " ", "space":
+				return m.enterPortfolio()
+			case "]":
+				next := m.cycleTheme(1)
+				next.setSizes()
+				return next, nil
+			}
+			return m, nil
+		}
+		switch msg.String() {
 		case "tab":
 			next, cmd := m.navigateTo(cyclePage(m.page, 1))
 			next.setSizes()
@@ -191,7 +230,13 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.MouseClickMsg:
+		if m.showSplash {
+			return m.enterPortfolio()
+		}
 		if m.ctx.zone != nil {
+			if m.ctx.zone.Get("brand").InBounds(msg) {
+				return m.openSplash()
+			}
 			if m.ctx.zone.Get("theme-cycle").InBounds(msg) {
 				next := m.cycleTheme(1)
 				next.setSizes()
@@ -259,6 +304,9 @@ func (m appModel) splitRule(junction string) string {
 func (m appModel) headerView() string {
 	p := profile()
 	brand := styleBrand().Render(fmt.Sprintf(">_ %s", p.Name))
+	if m.ctx.zone != nil {
+		brand = m.ctx.zone.Mark("brand", brand)
+	}
 	inner := styleHeader().Width(m.ctx.width).Render(brand)
 	return lipgloss.JoinVertical(lipgloss.Left, inner, m.splitRule("┬"))
 }
@@ -286,6 +334,10 @@ func (m appModel) pageContent() string {
 }
 
 func (m appModel) View() tea.View {
+	if m.showSplash {
+		return m.splashView()
+	}
+
 	header := m.headerView()
 	footer := m.footerView()
 	_, bodyH := m.contentSize()
@@ -310,6 +362,22 @@ func (m appModel) View() tea.View {
 			Render(output)
 	}
 
+	return m.finishView(output)
+}
+
+func (m appModel) splashView() tea.View {
+	output := m.splash.View()
+	if m.ctx.width > 0 && m.ctx.height > 0 {
+		output = styleApp().
+			Width(m.ctx.width).
+			Height(m.ctx.height).
+			MaxHeight(m.ctx.height).
+			Render(output)
+	}
+	return m.finishView(output)
+}
+
+func (m appModel) finishView(output string) tea.View {
 	v := tea.NewView(output)
 	v.AltScreen = true
 	v.MouseMode = tea.MouseModeCellMotion

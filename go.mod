@@ -10,6 +10,8 @@ require (
 	charm.land/log/v2 v2.0.0
 	charm.land/ssh v0.4.3
 	charm.land/wish/v2 v2.0.3
+	github.com/charmbracelet/harmonica v0.2.0
+	github.com/charmbracelet/x/ansi v0.11.8
 	github.com/lrstanley/bubblezone/v2 v2.0.0
 )
 
@@ -21,7 +23,6 @@ require (
 	github.com/charmbracelet/colorprofile v0.4.3 // indirect
 	github.com/charmbracelet/keygen v0.5.4 // indirect
 	github.com/charmbracelet/ultraviolet v0.0.0-20260811164956-006e29f97886 // indirect
-	github.com/charmbracelet/x/ansi v0.11.8 // indirect
 	github.com/charmbracelet/x/conpty v0.2.0 // indirect
 	github.com/charmbracelet/x/exp/slice v0.0.0-20250327172914-2fdc97757edf // indirect
 	github.com/charmbracelet/x/term v0.2.2 // indirect

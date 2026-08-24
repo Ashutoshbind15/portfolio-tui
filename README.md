@@ -2,7 +2,7 @@
 
 Terminal portfolio for [Ashutosh Bind](https://ashutoshbind.com). Same sections as the site — Home, Projects, Experience, Stack, Blogs — as a Bubble Tea app you can run locally or over SSH.
 
-A right sidebar switches pages (`[` collapses it to icons). Lists open into a short detail view instead of dumping the full copy on the page. Blog posts are markdown.
+A right sidebar switches pages (`[` collapses it to icons). The app opens on a full-screen intro; `enter` (or a click) goes into the portfolio, and clicking `>_ Ashutosh Bind` in the header brings the intro back. Lists open into a short detail view instead of dumping the full copy on the page. Blog posts are markdown.
 
 ## Run
 
@@ -25,7 +25,8 @@ ssh localhost -p 23235
 | --- | --- |
 | `tab` / `shift+tab` | Next / previous page |
 | `[` | Collapse / expand nav |
-| `enter` | Open the selected list item |
+| `enter` | Open the selected list item (or leave the intro) |
+| click name | Return to the intro |
 | `esc` | Back |
 | `q` / `ctrl+c` | Quit |
 | click | Sidebar pages, or `«`/`»` to toggle nav |
@@ -41,6 +42,7 @@ Charm v2 (`charm.land/*`):
 - [Bubbles](https://github.com/charmbracelet/bubbles) v2.2 — `list`, `viewport`, `help`, and `tree`
 - [Glamour](https://github.com/charmbracelet/glamour) v2 — blog markdown
 - [Wish](https://github.com/charmbracelet/wish) v2 — optional SSH host
+- [Harmonica](https://github.com/charmbracelet/harmonica) — spring animation on the intro
 - [bubblezone](https://github.com/lrstanley/bubblezone) v2 — clickable sidebar
 
 Drop posts into `blogs/*.md` (title / date / summary front matter). They are embedded at build time.
@@ -49,7 +51,8 @@ Drop posts into `blogs/*.md` (title / date / summary front matter). They are emb
 
 ```text
 main.go          local TUI + optional Wish server
-app.go           root router, header, footer
+app.go           root router, header, footer, intro splash
+splash.go        opening screen: name banner, waves, enter to continue
 sidebar.go       right-hand page nav
 scrollbar.go     viewport scrollbar when content overflows
 home.go          profile

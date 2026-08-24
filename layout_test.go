@@ -11,6 +11,13 @@ import (
 
 func sizedApp(w, h int) appModel {
 	m := newAppModel()
+	m.showSplash = false
+	mod, _ := m.Update(tea.WindowSizeMsg{Width: w, Height: h})
+	return mod.(appModel)
+}
+
+func sizedSplash(w, h int) appModel {
+	m := newAppModel()
 	mod, _ := m.Update(tea.WindowSizeMsg{Width: w, Height: h})
 	return mod.(appModel)
 }
@@ -220,6 +227,61 @@ func TestThemeSwitcherInSidebar(t *testing.T) {
 	}
 	if !strings.Contains(ansi.Strip(m.View().Content), "◆") {
 		t.Fatal("expected active theme marker in sidebar")
+	}
+}
+
+func TestSplashFitsTerminal(t *testing.T) {
+	sizes := [][2]int{{80, 24}, {100, 30}, {60, 20}, {40, 16}}
+	for _, size := range sizes {
+		w, h := size[0], size[1]
+		m := sizedSplash(w, h)
+		if !m.showSplash {
+			t.Fatal("app should open on the intro")
+		}
+		lines := viewLines(m)
+		if len(lines) != h {
+			t.Fatalf("%dx%d splash height: got %d want %d\n%s", w, h, len(lines), h, strings.Join(lines, "\n"))
+		}
+		for i, line := range lines {
+			if got := ansi.StringWidth(line); got != w {
+				t.Errorf("%dx%d splash line %d width=%d want=%d: %q", w, h, i, got, w, line)
+			}
+		}
+	}
+}
+
+func TestSplashShowsNameAndEnterHint(t *testing.T) {
+	m := sizedSplash(80, 24)
+	plain := ansi.Strip(m.View().Content)
+	if !strings.Contains(plain, "/___/") && !strings.Contains(plain, "_____") {
+		t.Fatalf("expected big-name banner on splash\n%s", plain)
+	}
+	if !strings.Contains(strings.ToLower(plain), "enter") {
+		t.Fatal("expected enter hint on splash")
+	}
+}
+
+func TestEnterLeavesSplash(t *testing.T) {
+	m := sizedSplash(80, 24)
+	mod, _ := m.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m = mod.(appModel)
+	if m.showSplash {
+		t.Fatal("enter should leave the intro")
+	}
+	plain := strings.ToLower(ansi.Strip(m.View().Content))
+	if !strings.Contains(plain, "home") {
+		t.Fatal("expected portfolio nav after enter")
+	}
+}
+
+func TestBrandReopensSplash(t *testing.T) {
+	m := sizedApp(80, 24)
+	if m.showSplash {
+		t.Fatal("sizedApp should start in the portfolio")
+	}
+	next, _ := m.openSplash()
+	if !next.showSplash {
+		t.Fatal("brand click should return to the intro")
 	}
 }
 
