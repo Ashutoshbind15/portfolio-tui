@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
@@ -14,26 +15,31 @@ type Context struct {
 	zone   *zone.Manager
 	width  int
 	height int
+	innerW int
 }
 
 type keyMap struct {
-	Menu key.Binding
-	Open key.Binding
-	Back key.Binding
-	Quit key.Binding
+	Next      key.Binding
+	Prev      key.Binding
+	Open      key.Binding
+	Back      key.Binding
+	ToggleNav key.Binding
+	Quit      key.Binding
 }
 
 func newKeyMap() keyMap {
 	return keyMap{
-		Menu: key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "pages")),
-		Open: key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
-		Back: key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
-		Quit: key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
+		Next:      key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next")),
+		Prev:      key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "prev")),
+		Open:      key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
+		Back:      key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+		ToggleNav: key.NewBinding(key.WithKeys("["), key.WithHelp("[", "nav")),
+		Quit:      key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 	}
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Menu, k.Open, k.Back, k.Quit}
+	return []key.Binding{k.Next, k.Open, k.Back, k.ToggleNav, k.Quit}
 }
 
 func (k keyMap) FullHelp() [][]key.Binding {
@@ -43,12 +49,11 @@ func (k keyMap) FullHelp() [][]key.Binding {
 type appModel struct {
 	ctx          *Context
 	page         Page
-	previousPage *Page
+	navCollapsed bool
 	keys         keyMap
 	help         help.Model
 
 	home       homeModel
-	menu       menuModel
 	projects   projectsModel
 	experience experienceModel
 	stack      stackModel
@@ -61,9 +66,8 @@ func newAppModel() appModel {
 		ctx:        ctx,
 		page:       PageHome,
 		keys:       newKeyMap(),
-		help:       help.New(),
+		help:       newHelp(),
 		home:       newHomeModel(ctx),
-		menu:       newMenuModel(ctx),
 		projects:   newProjectsModel(ctx),
 		experience: newExperienceModel(ctx),
 		stack:      newStackModel(ctx),
@@ -75,35 +79,8 @@ func (m appModel) Init() tea.Cmd {
 	return m.home.Init()
 }
 
-func (m appModel) openPageSelect() appModel {
-	if m.page == PageSelect {
-		return m
-	}
-	prev := m.page
-	m.previousPage = &prev
-	m.page = PageSelect
-	return m
-}
-
-func (m appModel) closePageSelect() appModel {
-	if m.previousPage == nil {
-		return m
-	}
-	m.page = *m.previousPage
-	m.previousPage = nil
-	return m
-}
-
-func (m appModel) effectivePage() Page {
-	if m.page == PageSelect && m.previousPage != nil {
-		return *m.previousPage
-	}
-	return m.page
-}
-
 func (m appModel) navigateTo(page Page) (appModel, tea.Cmd) {
 	m.page = page
-	m.previousPage = nil
 	return m.activateCurrentPage()
 }
 
@@ -129,41 +106,30 @@ func (m appModel) activateCurrentPage() (appModel, tea.Cmd) {
 		var cmd tea.Cmd
 		m.blogs, cmd = m.blogs.Activate()
 		return m, cmd
-	case PageSelect:
-		var cmd tea.Cmd
-		m.menu, cmd = m.menu.Activate()
-		return m, cmd
 	}
 	return m, nil
 }
 
+const contentPadX = 2
+
+func (m appModel) columnWidth() int {
+	return max(0, m.ctx.width-sidebarFrameWidth(m.navCollapsed))
+}
+
+func (m *appModel) contentSize() (width, height int) {
+	width = max(0, m.columnWidth()-contentPadX*2)
+	height = max(0, m.ctx.height-lipgloss.Height(m.headerView())-lipgloss.Height(m.footerView()))
+	return width, height
+}
+
 func (m *appModel) setSizes() {
-	header := m.headerView()
-	footer := m.footerView()
-	h := max(0, m.ctx.height-lipgloss.Height(header)-lipgloss.Height(footer))
-	w := max(0, m.ctx.width-2)
-	m.menu.SetSize(w, h)
+	w, h := m.contentSize()
+	m.ctx.innerW = w
 	m.projects.SetSize(w, h)
 	m.experience.SetSize(w, h)
 	m.stack.SetSize(w, h)
 	m.blogs.SetSize(w, h)
-	m.help.SetWidth(w)
-}
-
-func pageForDigit(s string) (Page, bool) {
-	switch s {
-	case "1":
-		return PageHome, true
-	case "2":
-		return PageProjects, true
-	case "3":
-		return PageExperience, true
-	case "4":
-		return PageStack, true
-	case "5":
-		return PageBlogs, true
-	}
-	return "", false
+	m.help.SetWidth(max(0, m.ctx.width-4))
 }
 
 func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -179,11 +145,6 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		next.setSizes()
 		return next, cmd
 
-	case closeMenuMsg:
-		m = m.closePageSelect()
-		m.setSizes()
-		return m.activateCurrentPage()
-
 	case tea.KeyPressMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
@@ -192,19 +153,26 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, tea.Quit
 		case "tab":
-			m = m.openPageSelect()
-			m.setSizes()
-			return m.activateCurrentPage()
-		default:
-			if page, ok := pageForDigit(msg.String()); ok && m.page != PageSelect {
-				next, cmd := m.navigateTo(page)
-				next.setSizes()
-				return next, cmd
-			}
+			next, cmd := m.navigateTo(cyclePage(m.page, 1))
+			next.setSizes()
+			return next, cmd
+		case "shift+tab":
+			next, cmd := m.navigateTo(cyclePage(m.page, -1))
+			next.setSizes()
+			return next, cmd
+		case "[":
+			next := m.toggleNav()
+			next.setSizes()
+			return next, nil
 		}
 
 	case tea.MouseClickMsg:
 		if m.ctx.zone != nil {
+			if m.ctx.zone.Get("nav-toggle").InBounds(msg) {
+				next := m.toggleNav()
+				next.setSizes()
+				return next, nil
+			}
 			for _, page := range navPages() {
 				id := "nav-" + string(page)
 				if m.ctx.zone.Get(id).InBounds(msg) {
@@ -220,10 +188,6 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case PageHome:
 		var cmd tea.Cmd
 		m.home, cmd = m.home.Update(msg)
-		return m, cmd
-	case PageSelect:
-		var cmd tea.Cmd
-		m.menu, cmd = m.menu.Update(msg)
 		return m, cmd
 	case PageProjects:
 		var cmd tea.Cmd
@@ -245,55 +209,32 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m appModel) splitRule(junction string) string {
+	col := m.columnWidth()
+	side := sidebarFrameWidth(m.navCollapsed)
+	line := strings.Repeat("─", max(0, col)) + junction + strings.Repeat("─", max(0, side-1))
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(colorBorder)).
+		Width(max(0, m.ctx.width)).
+		Render(line)
+}
+
 func (m appModel) headerView() string {
 	p := profile()
 	brand := styleBrand().Render(fmt.Sprintf(">_ %s", p.Name))
-
-	current := m.effectivePage()
-	tabs := make([]string, 0, len(navPages()))
-	for i, page := range navPages() {
-		label := fmt.Sprintf("%d %s", i+1, page.Title())
-		var styled string
-		if page == current {
-			styled = styleNavActive().Render(label)
-		} else {
-			styled = styleNavIdle().Render(label)
-		}
-		if m.ctx.zone != nil {
-			styled = m.ctx.zone.Mark("nav-"+string(page), styled)
-		}
-		tabs = append(tabs, styled)
-	}
-
-	nav := lipgloss.JoinHorizontal(lipgloss.Center, joinWithGap(tabs, "  ")...)
-	row := lipgloss.JoinHorizontal(lipgloss.Center, brand, "   ", nav)
-	return styleChromeBorder().Width(max(0, m.ctx.width)).Render(row)
-}
-
-func joinWithGap(parts []string, gap string) []string {
-	if len(parts) == 0 {
-		return parts
-	}
-	out := make([]string, 0, len(parts)*2-1)
-	for i, part := range parts {
-		if i > 0 {
-			out = append(out, gap)
-		}
-		out = append(out, part)
-	}
-	return out
+	inner := styleHeader().Width(m.ctx.width).Render(brand)
+	return lipgloss.JoinVertical(lipgloss.Left, inner, m.splitRule("┬"))
 }
 
 func (m appModel) footerView() string {
-	return styleFooter().Width(max(0, m.ctx.width)).Render(m.help.View(m.keys))
+	help := styleFooter().Width(m.ctx.width).Render(m.help.View(m.keys))
+	return lipgloss.JoinVertical(lipgloss.Left, m.splitRule("┴"), help)
 }
 
 func (m appModel) pageContent() string {
 	switch m.page {
 	case PageHome:
 		return m.home.View()
-	case PageSelect:
-		return m.menu.View()
 	case PageProjects:
 		return m.projects.View()
 	case PageExperience:
@@ -310,15 +251,16 @@ func (m appModel) pageContent() string {
 func (m appModel) View() tea.View {
 	header := m.headerView()
 	footer := m.footerView()
-	bodyH := max(0, m.ctx.height-lipgloss.Height(header)-lipgloss.Height(footer))
+	_, bodyH := m.contentSize()
 
 	content := lipgloss.NewStyle().
-		Width(max(0, m.ctx.width)).
+		Width(m.columnWidth()).
 		Height(bodyH).
-		Padding(0, 1).
+		Padding(0, contentPadX).
 		Render(m.pageContent())
 
-	output := lipgloss.JoinVertical(lipgloss.Top, header, content, footer)
+	body := lipgloss.JoinHorizontal(lipgloss.Top, content, m.sidebarView(bodyH))
+	output := lipgloss.JoinVertical(lipgloss.Top, header, body, footer)
 	if m.ctx.zone != nil {
 		output = m.ctx.zone.Scan(output)
 	}

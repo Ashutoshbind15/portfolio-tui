@@ -3,6 +3,7 @@ package main
 import (
 	"charm.land/bubbles/v2/tree"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 )
 
 type stackModel struct {
@@ -22,9 +23,28 @@ func newStackTree() *tree.Node {
 	return root
 }
 
+func treeStyles() tree.Styles {
+	s := tree.DefaultDarkStyles()
+	s.NodeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(colorText))
+	s.SelectedNodeStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color(colorBright)).
+		Bold(true)
+	s.RootNodeStyle = lipgloss.NewStyle().
+		Foreground(lipgloss.Color(colorAccent)).
+		Bold(true)
+	s.ParentNodeStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(colorMuted))
+	s.CursorStyle = s.CursorStyle.Foreground(lipgloss.Color(colorAccent))
+	s.EnumeratorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(colorFaint))
+	s.SelectedEnumeratorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(colorAccent))
+	s.IndenterStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(colorFaint))
+	s.OpenIndicatorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(colorMuted))
+	return s
+}
+
 func newStackModel(ctx *Context) stackModel {
 	t := tree.New(newStackTree(), 0, 0)
 	t.SetShowHelp(false)
+	t.SetStyles(treeStyles())
 	return stackModel{
 		ctx:  ctx,
 		tree: t,

@@ -1,17 +1,16 @@
 package main
 
 // Static portfolio content. Keep these short — pages render summaries,
-// and enter opens a detail view. Blog bodies stay plain text for now;
-// markdown files can replace them later.
+// and enter opens a detail view. Blog posts live as markdown in blogs/.
 
 type Profile struct {
-	Name     string
-	Role     string
-	Email    string
-	Website  string
-	GitHub   string
-	SSH      string
-	Bullets  []string
+	Name    string
+	Role    string
+	Email   string
+	Website string
+	GitHub  string
+	SSH     string
+	Bullets []string
 }
 
 func profile() Profile {
@@ -30,13 +29,13 @@ func profile() Profile {
 }
 
 type Project struct {
-	ID          string
-	Name        string
-	Summary     string
-	Detail      string
-	GitHub      string
-	Site        string
-	Tech        []string
+	ID      string
+	Name    string
+	Summary string
+	Detail  string
+	GitHub  string
+	Site    string
+	Tech    []string
 }
 
 func projects() []Project {
@@ -168,42 +167,4 @@ func stackCategories() []StackCategory {
 		{Name: "Ops", Items: []string{"Docker", "Linux", "Bash"}},
 		{Name: "AI", Items: []string{"Gemini", "Ollama"}},
 	}
-}
-
-type Blog struct {
-	ID      string
-	Title   string
-	Date    string
-	Summary string
-	Body    string
-}
-
-func blogs() []Blog {
-	return []Blog{
-		{
-			ID:      "tui-portfolio",
-			Title:   "A terminal portfolio",
-			Date:    "2026-08-24",
-			Summary: "Same site, different surface — a TUI you can SSH into.",
-			Body: "This is a placeholder. Posts will live as markdown here first,\n" +
-				"then get adapted into the web portfolio.\n\n" +
-				"For now the blogs page is just a list you can open.",
-		},
-		{
-			ID:      "notes",
-			Title:   "Notes",
-			Date:    "2026-08-24",
-			Summary: "Scratch space for short writeups.",
-			Body:    "Nothing here yet. Open this item to see how a post will read.",
-		},
-	}
-}
-
-func blogByID(id string) (Blog, bool) {
-	for _, b := range blogs() {
-		if b.ID == id {
-			return b, true
-		}
-	}
-	return Blog{}, false
 }

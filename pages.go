@@ -1,13 +1,16 @@
 package main
 
-import tea "charm.land/bubbletea/v2"
+import (
+	"strings"
+
+	tea "charm.land/bubbletea/v2"
+)
 
 // Page is a top-level route in the portfolio TUI.
 type Page string
 
 const (
 	PageHome       Page = "home"
-	PageSelect     Page = "select"
 	PageProjects   Page = "projects"
 	PageExperience Page = "experience"
 	PageStack      Page = "stack"
@@ -26,32 +29,54 @@ func (p Page) Title() string {
 		return "Stack"
 	case PageBlogs:
 		return "Blogs"
-	case PageSelect:
-		return "Pages"
 	default:
 		return string(p)
 	}
 }
 
-func (p Page) Description() string {
+// NavLabel is the short sidebar text. "experience" is too wide for the rail.
+func (p Page) NavLabel() string {
+	switch p {
+	case PageExperience:
+		return "work"
+	default:
+		return strings.ToLower(p.Title())
+	}
+}
+
+// Icon is a Unicode emoji (no extra font license). All are 2 cells wide.
+func (p Page) Icon() string {
 	switch p {
 	case PageHome:
-		return "Profile and contact"
+		return "🏠"
 	case PageProjects:
-		return "Open-source and shipped work"
+		return "📦"
 	case PageExperience:
-		return "Roles and internships"
+		return "💼"
 	case PageStack:
-		return "Tools grouped by area"
+		return "💻"
 	case PageBlogs:
-		return "Short notes"
+		return "📝"
 	default:
-		return ""
+		return "•"
 	}
 }
 
 func navPages() []Page {
 	return []Page{PageHome, PageProjects, PageExperience, PageStack, PageBlogs}
+}
+
+func cyclePage(current Page, delta int) Page {
+	pages := navPages()
+	idx := 0
+	for i, page := range pages {
+		if page == current {
+			idx = i
+			break
+		}
+	}
+	n := len(pages)
+	return pages[(idx+delta%n+n)%n]
 }
 
 // navigateMsg asks the root model to switch pages.
@@ -62,6 +87,3 @@ type navigateMsg struct {
 func navigateTo(page Page) tea.Cmd {
 	return func() tea.Msg { return navigateMsg{page: page} }
 }
-
-// closeMenuMsg pops the page-select overlay.
-type closeMenuMsg struct{}

@@ -44,8 +44,7 @@ func (m projectsModel) Activate() (projectsModel, tea.Cmd) {
 
 func (m *projectsModel) SetSize(width, height int) {
 	m.list.SetSize(width, height)
-	m.viewport.SetWidth(width)
-	m.viewport.SetHeight(height)
+	sizeViewport(&m.viewport, width, height)
 	if m.openID != "" {
 		m.refreshDetail()
 	}
@@ -85,7 +84,7 @@ func (m projectsModel) Update(msg tea.Msg) (projectsModel, tea.Cmd) {
 
 func (m projectsModel) View() string {
 	if m.openID != "" {
-		return m.viewport.View()
+		return viewWithScrollbar(m.viewport)
 	}
 	return m.list.View()
 }

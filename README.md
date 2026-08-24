@@ -2,7 +2,7 @@
 
 Terminal portfolio for [Ashutosh Bind](https://ashutoshbind.com). Same sections as the site — Home, Projects, Experience, Stack, Blogs — as a Bubble Tea app you can run locally or over SSH.
 
-Navigation and chrome follow [Term Chess](https://github.com/Ashutoshbind15/tern-chess): a root model routes pages, Tab opens a page list, and lists open into a short detail view instead of dumping the full copy on the page.
+A right sidebar switches pages (`[` collapses it to icons). Lists open into a short detail view instead of dumping the full copy on the page. Blog posts are markdown.
 
 ## Run
 
@@ -23,38 +23,42 @@ ssh localhost -p 23235
 
 | Key | Action |
 | --- | --- |
-| `tab` | Page list |
-| `1`–`5` | Home / Projects / Experience / Stack / Blogs |
+| `tab` / `shift+tab` | Next / previous page |
+| `[` | Collapse / expand nav |
 | `enter` | Open the selected list item |
-| `esc` | Back (or close the page list) |
+| `esc` | Back |
 | `q` / `ctrl+c` | Quit |
-| click | Header tabs (bubblezone) |
+| click | Sidebar pages, or `«`/`»` to toggle nav |
 
-On Stack, `enter` / `h` / `l` open and close the new Bubbles tree.
+On Stack, `enter` / `h` / `l` open and close the tree.
 
 ## Stack
 
-Charm v2 (`charm.land/*`), matching Term Chess libraries at current releases:
+Charm v2 (`charm.land/*`):
 
 - [Bubble Tea](https://github.com/charmbracelet/bubbletea) v2 — app model, declarative `tea.View`
 - [Lip Gloss](https://github.com/charmbracelet/lipgloss) v2 — layout and theme
-- [Bubbles](https://github.com/charmbracelet/bubbles) v2.2 — `list`, `viewport`, `help`, and the new `tree`
+- [Bubbles](https://github.com/charmbracelet/bubbles) v2.2 — `list`, `viewport`, `help`, and `tree`
+- [Glamour](https://github.com/charmbracelet/glamour) v2 — blog markdown
 - [Wish](https://github.com/charmbracelet/wish) v2 — optional SSH host
-- [bubblezone](https://github.com/lrstanley/bubblezone) v2 — clickable header nav
+- [bubblezone](https://github.com/lrstanley/bubblezone) v2 — clickable sidebar
 
-Blogs are plain text in `content.go` for now. Drop markdown into `blogs/` later (Glamour) and adapt those posts into the web portfolio.
+Drop posts into `blogs/*.md` (title / date / summary front matter). They are embedded at build time.
 
 ## Layout
 
 ```text
 main.go          local TUI + optional Wish server
 app.go           root router, header, footer
-menu.go          Tab page picker
+sidebar.go       right-hand page nav
+scrollbar.go     viewport scrollbar when content overflows
 home.go          profile
 projects.go      list → openable detail
 experience.go    list → openable detail
 stack.go         tree of tool groups
-blogs.go         list → simple text post
+blogs.go         list → markdown post
+markdown.go      Glamour renderer
 content.go       short static copy
 styles.go        shared Lip Gloss
+blogs/           markdown posts
 ```

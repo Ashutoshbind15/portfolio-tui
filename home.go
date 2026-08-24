@@ -21,7 +21,7 @@ func (m homeModel) Update(msg tea.Msg) (homeModel, tea.Cmd) {
 
 func (m homeModel) View() string {
 	p := profile()
-	width := max(20, m.ctx.width-4)
+	width := max(20, m.ctx.innerW)
 
 	name := styleHeading().Render(p.Name)
 	role := styleMuted().Render(p.Role)
@@ -38,10 +38,9 @@ func (m homeModel) View() string {
 		styleFaint().Render("   ")+styleMuted().Render(p.Website),
 	)
 
-	hint := styleFaint().Render("tab opens pages · 1–5 jump · enter opens a list item")
+	hint := styleFaint().Render("tab cycles pages · [ toggles nav · enter opens a list item")
 
 	return lipgloss.JoinVertical(lipgloss.Left,
-		"",
 		name,
 		role,
 		"",
