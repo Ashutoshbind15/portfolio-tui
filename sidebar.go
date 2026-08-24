@@ -88,15 +88,16 @@ func (m appModel) navRow(page Page, width int) string {
 }
 
 func (m appModel) navToggle(width int) string {
-	glyph := "«"
+	glyph := "<"
 	if m.navCollapsed {
-		glyph = "»"
+		glyph = ">"
 	}
-	row := styleFaint().
-		Width(width).
+	icon := styleFaint().
+		Width(navIconWidth).
 		Height(1).
-		Align(lipgloss.Center, lipgloss.Center).
+		Align(lipgloss.Left, lipgloss.Center).
 		Render(glyph)
+	row := lipgloss.NewStyle().Width(width).Render(icon)
 	if m.ctx.zone != nil {
 		row = m.ctx.zone.Mark("nav-toggle", row)
 	}

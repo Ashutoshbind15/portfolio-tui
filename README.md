@@ -29,7 +29,8 @@ ssh localhost -p 23235
 | click name | Return to the intro |
 | `esc` | Back |
 | `q` / `ctrl+c` | Quit |
-| click | Sidebar pages, or `«`/`»` to toggle nav |
+| click | Sidebar pages, or `<`/`>` to toggle nav |
+| drag | Select text and copy |
 
 On Stack, `enter` / `h` / `l` open and close the tree.
 
@@ -52,7 +53,8 @@ Drop posts into `blogs/*.md` (title / date / summary front matter). They are emb
 ```text
 main.go          local TUI + optional Wish server
 app.go           root router, header, footer, intro splash
-splash.go        opening screen: name banner, waves, enter to continue
+splash.go        opening screen: name banner, braille waves, enter to continue
+select.go        drag-to-select text and copy
 sidebar.go       right-hand page nav
 scrollbar.go     viewport scrollbar when content overflows
 home.go          profile

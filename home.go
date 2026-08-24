@@ -342,10 +342,9 @@ func (m *homeModel) renderPage() (string, [][2]int) {
 		}
 		b.blank()
 	}
-	b.add(styleFaint().Render("@  ") + styleBody().Render(p.Email))
-	b.add(styleFaint().Render("$  ") + styleBody().Render(p.SSH))
-	b.add(styleFaint().Render("   ") + styleMuted().Render(p.GitHub))
-	b.add(styleFaint().Render("   ") + styleMuted().Render(p.Website))
+	for _, row := range contactRows(p) {
+		b.add(renderContactRow(row, w))
+	}
 
 	return b.string(), itemLines
 }
@@ -466,6 +465,32 @@ func projectLinks(p Project) []projectLink {
 
 func padLinkLabel(label string) string {
 	return fmt.Sprintf("%-8s", label)
+}
+
+func fitIcon(s string) string {
+	w := lipgloss.Width(s)
+	if w >= 2 {
+		return s
+	}
+	return s + strings.Repeat(" ", 2-w)
+}
+
+func renderContactRow(row contactRow, width int) string {
+	icon := styleAccent().Render(fitIcon(row.Icon))
+	prefix := icon + "  "
+	pw := lipgloss.Width(prefix)
+	wrapped := wrapText(styleBody(), row.Value, max(1, width-pw))
+	lines := strings.Split(wrapped, "\n")
+	pad := strings.Repeat(" ", pw)
+	for i, line := range lines {
+		line = strings.TrimRight(line, " ")
+		if i == 0 {
+			lines[i] = prefix + line
+		} else {
+			lines[i] = pad + line
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (m homeModel) renderExperienceRow(i int, e Experience, width int) string {

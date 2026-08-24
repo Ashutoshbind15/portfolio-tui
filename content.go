@@ -11,10 +11,17 @@ type Profile struct {
 	Email    string
 	Website  string
 	GitHub   string
+	X        string
+	LinkedIn string
 	SSH      string
 	Location string
 	Bullets  []string
 	Contact  []string
+}
+
+type contactRow struct {
+	Icon  string
+	Value string
 }
 
 func profile() Profile {
@@ -24,13 +31,37 @@ func profile() Profile {
 		Email:    "dev@ashutoshbind.com",
 		Website:  "ashutoshbind.com",
 		GitHub:   "github.com/Ashutoshbind15",
+		X:        "x.com/Ashutosh_Bind15",
+		LinkedIn: "linkedin.com/in/ashutosh-bind-56806b22b",
 		SSH:      "ssh ash@tuis.ashutoshbind.com",
 		Location: "Navsari, India",
 		Bullets: []string{
 			"Solo developing apps around chess-analysis, local llms, design and much more",
 			"Open Sourcing some of my projects, tools and journey",
 		},
+		Contact: []string{
+			"Available for freelance, contract-based, or other interesting work",
+			"I'll try to reply within 24 hours",
+		},
 	}
+}
+
+func contactRows(p Profile) []contactRow {
+	rows := []contactRow{
+		{"📧", p.Email},
+		{"🐙", p.GitHub},
+		{"𝕏", p.X},
+		{"🔗", p.LinkedIn},
+		{"🌐", p.Website},
+		{">_", p.SSH},
+	}
+	out := rows[:0]
+	for _, row := range rows {
+		if row.Value != "" {
+			out = append(out, row)
+		}
+	}
+	return out
 }
 
 type NpmPackage struct {

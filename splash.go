@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/harmonica"
 )
 
-const splashFPS = 24
+const splashFPS = 30
 
 type splashFrameMsg time.Time
 
@@ -77,13 +77,7 @@ func (s splashModel) View() string {
 		return ""
 	}
 
-	grid := make([][]splashCell, h)
-	for y := 0; y < h; y++ {
-		grid[y] = make([]splashCell, w)
-		for x := 0; x < w; x++ {
-			grid[y][x] = waveCell(x, y, w, h, s.t)
-		}
-	}
+	grid := renderWaves(w, h, s.t)
 
 	name, bind := splashBanner(w, h)
 	p := profile()
@@ -170,51 +164,112 @@ func stampCell(grid [][]splashCell, x, y int, c splashCell) {
 	grid[y][x] = c
 }
 
-func waveCell(x, y, w, h int, t float64) splashCell {
-	if h <= 0 || w <= 0 {
-		return splashCell{r: ' '}
-	}
-	fx := float64(x)
-	fy := float64(y)
-	nh := float64(h)
+// Each terminal cell is a 2×4 braille pixel, matching the site's dotted hero.
+var brailleDot = [4][2]byte{
+	{0x01, 0x08},
+	{0x02, 0x10},
+	{0x04, 0x20},
+	{0x40, 0x80},
+}
 
-	swell := math.Sin(fx*0.13 + t*1.65)
-	chop := math.Sin(fx*0.07 - t*0.78 + 1.15)
-	ripple := math.Sin(fx*0.28 + t*2.35)
-	surface := nh*0.72 + swell*2.2 + chop*1.35 + ripple*0.55
-	rel := fy - surface
-
-	switch {
-	case rel < -3.2:
-		if sparkle(x, y, t) {
-			return splashCell{r: '·', fg: colorFaint}
+func renderWaves(w, h int, t float64) [][]splashCell {
+	grid := make([][]splashCell, h)
+	for y := 0; y < h; y++ {
+		grid[y] = make([]splashCell, w)
+		for x := 0; x < w; x++ {
+			grid[y][x] = splashCell{r: ' '}
 		}
-		return splashCell{r: ' '}
-	case rel < -1.1:
-		if swell+chop > 1.05 {
-			return splashCell{r: '~', fg: colorFaint}
-		}
-		return splashCell{r: ' '}
-	case rel < 0:
-		return splashCell{r: '~', fg: mixHex(colorMuted, colorAccent, 0.45)}
-	case rel < 1.2:
-		return splashCell{r: '≈', fg: colorAccent, bold: true}
-	case rel < 2.5:
-		return splashCell{r: '~', fg: colorAccent}
-	case rel < 4.8:
-		if math.Sin(fx*0.2+t*1.4+fy*0.55) > -0.2 {
-			return splashCell{r: '~', fg: colorMuted}
-		}
-		return splashCell{r: '·', fg: colorFaint}
-	default:
-		if math.Sin(fx*0.16+t*0.95+fy*0.4) > 0.15 {
-			return splashCell{r: '~', fg: colorFaint}
-		}
-		if sparkle(x, y+23, t*0.45) {
-			return splashCell{r: '.', fg: colorFaint}
-		}
-		return splashCell{r: ' '}
 	}
+	if w <= 0 || h <= 0 {
+		return grid
+	}
+
+	pw, ph := w*2, h*4
+	bits := make([]byte, w*h)
+	crest := make([]bool, w*h)
+	surf := make([]float64, pw)
+	for px := 0; px < pw; px++ {
+		surf[px] = waveSurface(px, ph, t)
+	}
+
+	plot := func(px, py int, isCrest bool) {
+		if px < 0 || py < 0 || px >= pw || py >= ph {
+			return
+		}
+		cx, cy := px/2, py/4
+		idx := cy*w + cx
+		bits[idx] |= brailleDot[py%4][px%2]
+		if isCrest {
+			crest[idx] = true
+		}
+	}
+
+	const ribbon = 18
+	for px := 0; px < pw; px++ {
+		yi := int(math.Round(surf[px]))
+		if px+1 < pw {
+			y2 := int(math.Round(surf[px+1]))
+			step := 1
+			if y2 < yi {
+				step = -1
+			}
+			for py := yi; py != y2; py += step {
+				plot(px, py, true)
+			}
+		}
+		bot := min(ph, yi+ribbon)
+		for py := yi - 1; py < bot; py++ {
+			depth := py - yi
+			if depth <= 1 {
+				plot(px, py, true)
+				continue
+			}
+			thresh := float64(depth) / float64(ribbon)
+			n := math.Sin(float64(px)*12.9898 + float64(py)*78.233 + t*0.2)
+			n = n * 43758.5453
+			n -= math.Floor(n)
+			if n > thresh*0.55 {
+				plot(px, py, false)
+			}
+		}
+	}
+
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			idx := y*w + x
+			b := bits[idx]
+			if b == 0 {
+				if sparkle(x, y, t) {
+					grid[y][x] = splashCell{r: '·', fg: colorFaint}
+				}
+				continue
+			}
+			sx := min(x*2, pw-1)
+			rel := (float64(y) + 0.5) - surf[sx]/4
+			cell := splashCell{r: rune(0x2800 + int(b))}
+			switch {
+			case crest[idx] || rel < 0.55:
+				cell.fg = colorAccent
+				cell.bold = true
+			case rel < 2.0:
+				cell.fg = mixHex(colorAccent, colorMuted, 0.3)
+			case rel < 4.2:
+				cell.fg = colorMuted
+			default:
+				cell.fg = colorFaint
+			}
+			grid[y][x] = cell
+		}
+	}
+	return grid
+}
+
+func waveSurface(px, ph int, t float64) float64 {
+	fx := float64(px)
+	swell := math.Sin(fx*0.062 + t*1.55)
+	chop := math.Sin(fx*0.034 - t*0.82 + 1.2)
+	ripple := math.Sin(fx*0.148 + t*2.35)
+	return float64(ph)*0.80 + swell*7.5 + chop*4.2 + ripple*1.8
 }
 
 func sparkle(x, y int, t float64) bool {

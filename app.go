@@ -70,6 +70,8 @@ type appModel struct {
 	help         help.Model
 	showSplash   bool
 	splash       splashModel
+	sel          textSel
+	frame        *string
 
 	home       homeModel
 	projects   projectsModel
@@ -88,6 +90,7 @@ func newAppModel() appModel {
 		help:       newHelp(),
 		showSplash: true,
 		splash:     newSplashModel(),
+		frame:      new(string),
 		home:       newHomeModel(ctx),
 		projects:   newProjectsModel(ctx),
 		experience: newExperienceModel(ctx),
@@ -230,39 +233,49 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case tea.MouseClickMsg:
+		if msg.Button != tea.MouseLeft {
+			break
+		}
 		if m.showSplash {
-			return m.enterPortfolio()
+			m.sel.press(msg.X, msg.Y)
+			return m, nil
 		}
-		if m.ctx.zone != nil {
-			if m.ctx.zone.Get("brand").InBounds(msg) {
-				return m.openSplash()
-			}
-			if m.ctx.zone.Get("theme-cycle").InBounds(msg) {
-				next := m.cycleTheme(1)
-				next.setSizes()
-				return next, nil
-			}
-			for _, th := range allThemes() {
-				if m.ctx.zone.Get("theme-" + th.ID).InBounds(msg) {
-					next := m.setTheme(th.ID)
-					next.setSizes()
-					return next, nil
-				}
-			}
-			if m.ctx.zone.Get("nav-toggle").InBounds(msg) {
-				next := m.toggleNav()
-				next.setSizes()
-				return next, nil
-			}
-			for _, page := range navPages() {
-				id := "nav-" + string(page)
-				if m.ctx.zone.Get(id).InBounds(msg) {
-					next, cmd := m.navigateTo(page)
-					next.setSizes()
-					return next, cmd
-				}
+		if m.hitNavZone(msg) {
+			m.sel.clear()
+			return m.handleNavClick(msg)
+		}
+		m.sel.press(msg.X, msg.Y)
+
+	case tea.MouseMotionMsg:
+		if m.sel.down {
+			m.sel.drag(msg.X, msg.Y)
+			if m.sel.dragging {
+				return m, nil
 			}
 		}
+
+	case tea.MouseReleaseMsg:
+		if msg.Button != tea.MouseLeft {
+			break
+		}
+		wasDown := m.sel.down
+		moved := m.sel.dragging
+		m.sel.down = false
+		m.sel.dragging = false
+		if m.showSplash {
+			if wasDown && !moved {
+				m.sel.clear()
+				return m.enterPortfolio()
+			}
+			if moved {
+				return m.copySelection()
+			}
+			break
+		}
+		if moved {
+			return m.copySelection()
+		}
+		m.sel.active = false
 	}
 
 	switch m.page {
@@ -377,7 +390,82 @@ func (m appModel) splashView() tea.View {
 	return m.finishView(output)
 }
 
+func (m appModel) hitNavZone(msg tea.MouseClickMsg) bool {
+	if m.ctx.zone == nil {
+		return false
+	}
+	if m.ctx.zone.Get("brand").InBounds(msg) {
+		return true
+	}
+	if m.ctx.zone.Get("theme-cycle").InBounds(msg) {
+		return true
+	}
+	if m.ctx.zone.Get("nav-toggle").InBounds(msg) {
+		return true
+	}
+	for _, th := range allThemes() {
+		if m.ctx.zone.Get("theme-" + th.ID).InBounds(msg) {
+			return true
+		}
+	}
+	for _, page := range navPages() {
+		if m.ctx.zone.Get("nav-" + string(page)).InBounds(msg) {
+			return true
+		}
+	}
+	return false
+}
+
+func (m appModel) handleNavClick(msg tea.MouseClickMsg) (appModel, tea.Cmd) {
+	if m.ctx.zone.Get("brand").InBounds(msg) {
+		return m.openSplash()
+	}
+	if m.ctx.zone.Get("theme-cycle").InBounds(msg) {
+		next := m.cycleTheme(1)
+		next.setSizes()
+		return next, nil
+	}
+	for _, th := range allThemes() {
+		if m.ctx.zone.Get("theme-" + th.ID).InBounds(msg) {
+			next := m.setTheme(th.ID)
+			next.setSizes()
+			return next, nil
+		}
+	}
+	if m.ctx.zone.Get("nav-toggle").InBounds(msg) {
+		next := m.toggleNav()
+		next.setSizes()
+		return next, nil
+	}
+	for _, page := range navPages() {
+		if m.ctx.zone.Get("nav-" + string(page)).InBounds(msg) {
+			next, cmd := m.navigateTo(page)
+			next.setSizes()
+			return next, cmd
+		}
+	}
+	return m, nil
+}
+
+func (m appModel) copySelection() (appModel, tea.Cmd) {
+	m.sel.active = true
+	if m.frame == nil {
+		return m, nil
+	}
+	_, text := applySelection(*m.frame, m.sel.originX, m.sel.originY, m.sel.x, m.sel.y)
+	if text != "" {
+		return m, tea.SetClipboard(text)
+	}
+	return m, nil
+}
+
 func (m appModel) finishView(output string) tea.View {
+	if m.frame != nil {
+		*m.frame = output
+	}
+	if m.sel.live() {
+		output, _ = applySelection(output, m.sel.originX, m.sel.originY, m.sel.x, m.sel.y)
+	}
 	v := tea.NewView(output)
 	v.AltScreen = true
 	v.MouseMode = tea.MouseModeCellMotion

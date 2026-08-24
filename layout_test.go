@@ -307,6 +307,18 @@ func TestSplashShowsNameAndEnterHint(t *testing.T) {
 	if !strings.Contains(strings.ToLower(plain), "enter") {
 		t.Fatal("expected enter hint on splash")
 	}
+	if !strings.Contains(plain, "\u2800") && !hasBraille(plain) {
+		t.Fatal("expected braille-dot waves on splash")
+	}
+}
+
+func hasBraille(s string) bool {
+	for _, r := range s {
+		if r >= 0x2800 && r <= 0x28FF {
+			return true
+		}
+	}
+	return false
 }
 
 func TestEnterLeavesSplash(t *testing.T) {

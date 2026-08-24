@@ -103,9 +103,8 @@ func renderProjectDetail(p Project, width int) string {
 	if p.Kind != "" {
 		b.WriteString(styleMuted().Render("  " + p.Kind))
 	}
-	b.WriteString("\n")
 	if p.Tagline != "" {
-		b.WriteString("\n")
+		b.WriteString("\n\n")
 		b.WriteString(styleMuted().Width(w).Render(p.Tagline))
 	}
 
@@ -114,8 +113,8 @@ func renderProjectDetail(p Project, width int) string {
 
 	if projectHasLinks(p) {
 		b.WriteString("\n\n")
-		b.WriteString(styleFaint().Render("where"))
-		b.WriteString("\n")
+		b.WriteString(detailRule("where", w))
+		b.WriteString("\n\n")
 		for _, link := range projectLinks(p) {
 			b.WriteString(styleFaint().Render(padLinkLabel(link.Label)))
 			b.WriteString(styleMuted().Render(link.Value))
@@ -127,16 +126,19 @@ func renderProjectDetail(p Project, width int) string {
 
 	if len(p.Upcoming) > 0 {
 		b.WriteString("\n\n")
-		b.WriteString(styleFaint().Render("upcoming"))
-		b.WriteString("\n")
-		for _, item := range p.Upcoming {
+		b.WriteString(detailRule("upcoming", w))
+		b.WriteString("\n\n")
+		for i, item := range p.Upcoming {
+			if i > 0 {
+				b.WriteString("\n")
+			}
 			b.WriteString(styleMuted().Width(w).Render("•  " + item))
-			b.WriteString("\n")
 		}
+		b.WriteString("\n")
 	}
 
 	if len(p.Tech) > 0 {
-		b.WriteString("\n")
+		b.WriteString("\n\n")
 		b.WriteString(joinChips(p.Tech))
 	}
 	b.WriteString("\n\n")
@@ -149,7 +151,17 @@ func writeDetailSection(b *strings.Builder, label, body string, width int) {
 		return
 	}
 	b.WriteString("\n\n")
-	b.WriteString(styleFaint().Render(label))
-	b.WriteString("\n")
+	b.WriteString(detailRule(label, width))
+	b.WriteString("\n\n")
 	b.WriteString(styleBody().Width(width).Render(body))
+}
+
+func detailRule(title string, width int) string {
+	label := " " + strings.ToUpper(title) + " "
+	fill := max(0, width-2-lipgloss.Width(label))
+	rule := strings.Repeat("─", 2) + label + strings.Repeat("─", fill)
+	if lipgloss.Width(rule) > width {
+		rule = "── " + strings.ToUpper(title)
+	}
+	return styleAccent().Bold(true).Render(rule)
 }
