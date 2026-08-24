@@ -136,8 +136,7 @@ func projects() []Project {
 				"GitHub repo connections and agent-loop iterations on one-shot designs",
 				"Scripted environment setup",
 			},
-			GitHub: "https://github.com/Ashutoshbind15/ai-ui-comparator-cloud",
-			Site:   "https://varipane.com",
+			Site: "https://varipane.com",
 			Tech:   []string{"React", "TypeScript", "Node.js", "Vite", "Docker"},
 		},
 		{

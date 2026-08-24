@@ -2,10 +2,13 @@ package main
 
 import (
 	"strings"
+	"sync"
 
 	"charm.land/glamour/v2"
 	"charm.land/glamour/v2/ansi"
 	gstyles "charm.land/glamour/v2/styles"
+	"github.com/alecthomas/chroma/v2"
+	chromastyles "github.com/alecthomas/chroma/v2/styles"
 )
 
 func renderMarkdown(src string, width int) string {
@@ -62,9 +65,79 @@ func markdownStyle() ansi.StyleConfig {
 	s.CodeBlock.Color = strPtr(colorCode)
 	s.CodeBlock.BackgroundColor = strPtr(colorCodeBg)
 	s.CodeBlock.Margin = uintPtr(1)
-	s.CodeBlock.Chroma = markdownChroma()
+	// Glamour registers custom chroma palettes once under the name "charm"
+	// and never updates them. Point it at a per-theme style instead.
+	s.CodeBlock.Theme = registerMarkdownChroma()
+	s.CodeBlock.Chroma = nil
 
 	return s
+}
+
+var chromaMu sync.Mutex
+
+func chromaThemeName() string {
+	return "tui-pf-" + currentTheme().ID
+}
+
+func registerMarkdownChroma() string {
+	name := chromaThemeName()
+	c := markdownChroma()
+	chromaMu.Lock()
+	chromastyles.Register(chroma.MustNewStyle(name, chroma.StyleEntries{
+		chroma.Background:          chromaEntry(c.Background),
+		chroma.Text:                chromaEntry(c.Text),
+		chroma.Error:               chromaEntry(c.Error),
+		chroma.Comment:             chromaEntry(c.Comment),
+		chroma.CommentPreproc:      chromaEntry(c.CommentPreproc),
+		chroma.Keyword:             chromaEntry(c.Keyword),
+		chroma.KeywordReserved:     chromaEntry(c.KeywordReserved),
+		chroma.KeywordNamespace:    chromaEntry(c.KeywordNamespace),
+		chroma.KeywordType:         chromaEntry(c.KeywordType),
+		chroma.Operator:            chromaEntry(c.Operator),
+		chroma.Punctuation:         chromaEntry(c.Punctuation),
+		chroma.Name:                chromaEntry(c.Name),
+		chroma.NameBuiltin:         chromaEntry(c.NameBuiltin),
+		chroma.NameTag:             chromaEntry(c.NameTag),
+		chroma.NameAttribute:       chromaEntry(c.NameAttribute),
+		chroma.NameClass:           chromaEntry(c.NameClass),
+		chroma.NameConstant:        chromaEntry(c.NameConstant),
+		chroma.NameDecorator:       chromaEntry(c.NameDecorator),
+		chroma.NameException:       chromaEntry(c.NameException),
+		chroma.NameFunction:        chromaEntry(c.NameFunction),
+		chroma.NameOther:           chromaEntry(c.NameOther),
+		chroma.Literal:             chromaEntry(c.Literal),
+		chroma.LiteralNumber:       chromaEntry(c.LiteralNumber),
+		chroma.LiteralDate:         chromaEntry(c.LiteralDate),
+		chroma.LiteralString:       chromaEntry(c.LiteralString),
+		chroma.LiteralStringEscape: chromaEntry(c.LiteralStringEscape),
+		chroma.GenericDeleted:      chromaEntry(c.GenericDeleted),
+		chroma.GenericEmph:         chromaEntry(c.GenericEmph),
+		chroma.GenericInserted:     chromaEntry(c.GenericInserted),
+		chroma.GenericStrong:       chromaEntry(c.GenericStrong),
+		chroma.GenericSubheading:   chromaEntry(c.GenericSubheading),
+	}))
+	chromaMu.Unlock()
+	return name
+}
+
+func chromaEntry(p ansi.StylePrimitive) string {
+	var parts []string
+	if p.Color != nil {
+		parts = append(parts, *p.Color)
+	}
+	if p.BackgroundColor != nil {
+		parts = append(parts, "bg:"+*p.BackgroundColor)
+	}
+	if p.Italic != nil && *p.Italic {
+		parts = append(parts, "italic")
+	}
+	if p.Bold != nil && *p.Bold {
+		parts = append(parts, "bold")
+	}
+	if p.Underline != nil && *p.Underline {
+		parts = append(parts, "underline")
+	}
+	return strings.Join(parts, " ")
 }
 
 func markdownChroma() *ansi.Chroma {
