@@ -207,6 +207,13 @@ func (m blogsModel) View() string {
 	return m.list.View()
 }
 
+func (m *blogsModel) applyTheme() {
+	restyleList(&m.list)
+	if m.openID != "" {
+		m.refreshDetail()
+	}
+}
+
 func renderBlogDetail(b Blog, width int) string {
 	w := max(20, width-2)
 	var sb strings.Builder

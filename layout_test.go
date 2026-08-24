@@ -117,7 +117,7 @@ func TestHomeScrollbarWhenOverflow(t *testing.T) {
 			m.home.viewport.TotalLineCount(), m.home.viewport.Height())
 	}
 	plain := ansi.Strip(m.View().Content)
-	if !strings.Contains(plain, "█") {
+	if !strings.Contains(plain, scrollbarThumb) {
 		t.Fatalf("expected scrollbar thumb on overflowing home")
 	}
 }
@@ -180,7 +180,89 @@ func TestBlogScrollbarWhenOverflow(t *testing.T) {
 		t.Skip("blog fits without a scrollbar in this size")
 	}
 	plain := ansi.Strip(m.View().Content)
-	if !strings.Contains(plain, "█") {
+	if !strings.Contains(plain, scrollbarThumb) {
 		t.Fatalf("expected scrollbar thumb in overflowing blog view")
+	}
+}
+
+func TestScrollbarHugsContentEdge(t *testing.T) {
+	const w, h = 80, 24
+	m := sizedApp(w, h)
+	wantCol := m.columnWidth() - 1
+	found := false
+	for _, line := range viewLines(m) {
+		idx := strings.Index(line, scrollbarThumb)
+		if idx < 0 {
+			continue
+		}
+		found = true
+		col := ansi.StringWidth(line[:idx])
+		if col != wantCol {
+			t.Errorf("thumb at col %d, want %d (right edge of content)\n%s", col, wantCol, line)
+		}
+	}
+	if !found {
+		t.Fatal("expected overlay scrollbar thumb on overflowing home")
+	}
+}
+
+func TestThemeSwitcherInSidebar(t *testing.T) {
+	m := sizedApp(80, 24)
+	plain := strings.ToLower(ansi.Strip(m.View().Content))
+	if !strings.Contains(plain, "theme") {
+		t.Fatal("expected theme label in sidebar")
+	}
+	if !strings.Contains(plain, "pumice") {
+		t.Fatal("expected current theme name in sidebar")
+	}
+	if !strings.Contains(ansi.Strip(m.View().Content), "●") {
+		t.Fatal("expected theme swatches in sidebar")
+	}
+	if !strings.Contains(ansi.Strip(m.View().Content), "◆") {
+		t.Fatal("expected active theme marker in sidebar")
+	}
+}
+
+func TestThemeCycleKeepsLayout(t *testing.T) {
+	const w, h = 80, 24
+	m := sizedApp(w, h)
+	mod, _ := m.Update(tea.KeyPressMsg{Code: ']', Text: "]"})
+	m = mod.(appModel)
+	if m.themeID == defaultThemeID {
+		t.Fatal("] should cycle off the default theme")
+	}
+	plain := strings.ToLower(ansi.Strip(m.View().Content))
+	if !strings.Contains(plain, strings.ToLower(currentTheme().Name)) {
+		t.Fatalf("expected cycled theme name %q in sidebar", currentTheme().Name)
+	}
+	lines := viewLines(m)
+	if len(lines) != h {
+		t.Fatalf("height after theme cycle: got %d want %d", len(lines), h)
+	}
+	for i, line := range lines {
+		if got := ansi.StringWidth(line); got != w {
+			t.Errorf("line %d width=%d want=%d: %q", i, got, w, line)
+		}
+	}
+
+	m = m.toggleNav()
+	m.setSizes()
+	collapsed := ansi.Strip(m.View().Content)
+	if !strings.Contains(collapsed, "◆") {
+		t.Fatal("expected collapsed theme swatch")
+	}
+
+	for range allThemes() {
+		mod, _ := m.Update(tea.KeyPressMsg{Code: ']', Text: "]"})
+		m = mod.(appModel)
+		lines := viewLines(m)
+		if len(lines) != h {
+			t.Fatalf("theme %s height=%d want %d", m.themeID, len(lines), h)
+		}
+		for i, line := range lines {
+			if got := ansi.StringWidth(line); got != w {
+				t.Fatalf("theme %s line %d width=%d want=%d", m.themeID, i, got, w)
+			}
+		}
 	}
 }

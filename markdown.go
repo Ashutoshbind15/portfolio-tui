@@ -96,7 +96,7 @@ func markdownChroma() *ansi.Chroma {
 		LiteralDate:         ansi.StylePrimitive{Color: strPtr(colorCode), BackgroundColor: bg},
 		LiteralString:       ansi.StylePrimitive{Color: strPtr(colorCode), BackgroundColor: bg},
 		LiteralStringEscape: ansi.StylePrimitive{Color: strPtr(colorAccent), BackgroundColor: bg},
-		GenericDeleted:      ansi.StylePrimitive{Color: strPtr("#C17B6A"), BackgroundColor: bg},
+		GenericDeleted:      ansi.StylePrimitive{Color: strPtr(colorWarn), BackgroundColor: bg},
 		GenericEmph:         ansi.StylePrimitive{Italic: boolPtr(true), BackgroundColor: bg},
 		GenericInserted:     ansi.StylePrimitive{Color: strPtr(colorAccent), BackgroundColor: bg},
 		GenericStrong:       ansi.StylePrimitive{Bold: boolPtr(true), BackgroundColor: bg},

@@ -6,18 +6,20 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// Hex palette: one accent, warm paper text, stone secondaries.
-// Mid-saturation so it downsamples cleanly on 256-color and 16-color
-// terminals instead of blowing out to neon.
-const (
-	colorAccent = "#6A9E96"
-	colorBright = "#E8E4D9"
-	colorText   = "#C9C3B6"
-	colorMuted  = "#8F897C"
-	colorFaint  = "#5E5A52"
-	colorBorder = "#3F3C37"
-	colorCode   = "#C9A36A"
-	colorCodeBg = "#2A2824"
+// Active palette; applyTheme swaps these. Seeded with Pumice so styles
+// work before the first model is constructed.
+var (
+	colorAccent  = "#6A9E96"
+	colorBright  = "#E8E4D9"
+	colorText    = "#C9C3B6"
+	colorMuted   = "#8F897C"
+	colorFaint   = "#5E5A52"
+	colorBorder  = "#3F3C37"
+	colorCode    = "#C9A36A"
+	colorCodeBg  = "#2A2824"
+	colorBg      = "#1A1917"
+	colorSurface = "#2A2824"
+	colorWarn    = "#C17B6A"
 )
 
 func styleBrand() lipgloss.Style {
@@ -33,7 +35,7 @@ func styleNavIdle() lipgloss.Style {
 func styleNavActive() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color(colorAccent)).
-		Background(lipgloss.Color(colorCodeBg))
+		Background(lipgloss.Color(colorSurface))
 }
 
 func styleNavIcon(active bool) lipgloss.Style {
@@ -42,7 +44,7 @@ func styleNavIcon(active bool) lipgloss.Style {
 		Height(1).
 		Align(lipgloss.Center, lipgloss.Center)
 	if active {
-		s = s.Background(lipgloss.Color(colorCodeBg))
+		s = s.Background(lipgloss.Color(colorSurface))
 	}
 	return s
 }
@@ -50,7 +52,7 @@ func styleNavIcon(active bool) lipgloss.Style {
 func styleNavGap(active bool) lipgloss.Style {
 	s := lipgloss.NewStyle().Width(1).Height(1)
 	if active {
-		s = s.Background(lipgloss.Color(colorCodeBg))
+		s = s.Background(lipgloss.Color(colorSurface))
 	}
 	return s
 }
@@ -63,12 +65,16 @@ func styleNavLabel(active bool) lipgloss.Style {
 }
 
 func styleHeader() lipgloss.Style {
-	return lipgloss.NewStyle().Padding(1, 2, 1, 2)
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(colorText)).
+		Background(lipgloss.Color(colorBg)).
+		Padding(1, 2, 1, 2)
 }
 
 func styleFooter() lipgloss.Style {
 	return lipgloss.NewStyle().
 		Foreground(lipgloss.Color(colorFaint)).
+		Background(lipgloss.Color(colorBg)).
 		Padding(0, 2)
 }
 
@@ -78,6 +84,12 @@ func styleScrollbarThumb() lipgloss.Style {
 
 func styleScrollbarTrack() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(colorBorder))
+}
+
+func styleApp() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(colorText)).
+		Background(lipgloss.Color(colorBg))
 }
 
 func styleHeading() lipgloss.Style {
@@ -104,7 +116,12 @@ func styleAccent() lipgloss.Style {
 
 func newHelp() help.Model {
 	h := help.New()
-	s := help.DefaultDarkStyles()
+	var s help.Styles
+	if currentTheme().Light {
+		s = help.DefaultLightStyles()
+	} else {
+		s = help.DefaultDarkStyles()
+	}
 	s.ShortKey = s.ShortKey.Foreground(lipgloss.Color(colorMuted))
 	s.ShortDesc = s.ShortDesc.Foreground(lipgloss.Color(colorFaint))
 	s.ShortSeparator = s.ShortSeparator.Foreground(lipgloss.Color(colorBorder))
@@ -126,7 +143,7 @@ func styleChip() lipgloss.Style {
 }
 
 func itemStyles() list.DefaultItemStyles {
-	s := list.NewDefaultItemStyles(true)
+	s := list.NewDefaultItemStyles(!currentTheme().Light)
 	s.NormalTitle = s.NormalTitle.Foreground(lipgloss.Color(colorText))
 	s.NormalDesc = s.NormalDesc.Foreground(lipgloss.Color(colorMuted))
 	s.SelectedTitle = s.SelectedTitle.
@@ -146,13 +163,22 @@ func newItemList(title string, items []list.Item, width, height int) list.Model 
 	d.Styles = itemStyles()
 	l := list.New(items, d, width, height)
 	l.Title = title
-	l.Styles = list.DefaultStyles(true)
+	l.Styles = list.DefaultStyles(!currentTheme().Light)
 	l.Styles.Title = styleHeading()
 	l.SetShowTitle(false)
 	l.SetShowStatusBar(false)
 	l.SetShowHelp(false)
 	l.DisableQuitKeybindings()
 	return l
+}
+
+func restyleList(l *list.Model) {
+	d := list.NewDefaultDelegate()
+	d.SetSpacing(1)
+	d.Styles = itemStyles()
+	l.SetDelegate(d)
+	l.Styles = list.DefaultStyles(!currentTheme().Light)
+	l.Styles.Title = styleHeading()
 }
 
 func joinChips(labels []string) string {

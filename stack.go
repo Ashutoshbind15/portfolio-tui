@@ -68,3 +68,7 @@ func (m stackModel) Update(msg tea.Msg) (stackModel, tea.Cmd) {
 func (m stackModel) View() string {
 	return m.tree.View()
 }
+
+func (m *stackModel) applyTheme() {
+	m.tree.SetStyles(treeStyles())
+}

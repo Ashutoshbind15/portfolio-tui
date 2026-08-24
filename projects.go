@@ -94,6 +94,13 @@ func (m projectsModel) View() string {
 	return m.list.View()
 }
 
+func (m *projectsModel) applyTheme() {
+	restyleList(&m.list)
+	if m.openID != "" {
+		m.refreshDetail()
+	}
+}
+
 func renderProjectDetail(p Project, width int) string {
 	w := max(20, width-2)
 	var b strings.Builder

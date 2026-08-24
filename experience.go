@@ -96,6 +96,13 @@ func (m experienceModel) View() string {
 	return m.list.View()
 }
 
+func (m *experienceModel) applyTheme() {
+	restyleList(&m.list)
+	if m.openID != "" {
+		m.refreshDetail()
+	}
+}
+
 func renderExperienceDetail(e Experience, width int) string {
 	w := max(20, width-2)
 	title := e.Role
