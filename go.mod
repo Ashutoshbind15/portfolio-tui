@@ -1,4 +1,4 @@
-module github.com/Ashutoshbind15/tui-pf
+module github.com/Ashutoshbind15/portfolio-tui
 
 go 1.25.12
 

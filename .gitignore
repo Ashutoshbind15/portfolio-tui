@@ -4,6 +4,7 @@ portfolio-new (Copy)/
 
 # Build
 /tui-pf
+/portfolio-tui
 /dist
 *.exe
 

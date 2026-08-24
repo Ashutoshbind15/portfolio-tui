@@ -33,7 +33,7 @@ func profile() Profile {
 		GitHub:   "github.com/Ashutoshbind15",
 		X:        "x.com/Ashutosh_Bind15",
 		LinkedIn: "linkedin.com/in/ashutosh-bind-56806b22b",
-		SSH:      "ssh ash@tuis.ashutoshbind.com",
+		SSH:      "go run github.com/Ashutoshbind15/portfolio-tui@main",
 		Location: "Navsari, India",
 		Bullets: []string{
 			"Solo developing apps around chess-analysis, local llms, design and much more",

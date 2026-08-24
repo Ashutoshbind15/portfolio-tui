@@ -1,10 +1,24 @@
-# tui-pf
+# portfolio-tui
 
 Terminal portfolio for [Ashutosh Bind](https://ashutoshbind.com). Same sections as the site — Home, Projects, Experience, Stack, Blogs — as a Bubble Tea app you can run locally or over SSH.
 
 A right sidebar switches pages (`[` collapses it to icons). The app opens on a full-screen intro; `enter` (or a click) goes into the portfolio, and clicking `>_ Ashutosh Bind` in the header brings the intro back. Lists open into a short detail view instead of dumping the full copy on the page. Blog posts are markdown.
 
 ## Run
+
+Needs [Go](https://go.dev/dl/) 1.25+. From anywhere:
+
+```bash
+go run github.com/Ashutoshbind15/portfolio-tui@main
+```
+
+Install into `$(go env GOPATH)/bin`:
+
+```bash
+go install github.com/Ashutoshbind15/portfolio-tui@main
+```
+
+From a clone:
 
 ```bash
 go run .

@@ -50,7 +50,7 @@ func TestContactUsesBrandIcons(t *testing.T) {
 		"x.com/Ashutosh_Bind15",
 		"linkedin.com/in/ashutosh-bind-56806b22b",
 		"ashutoshbind.com",
-		"ssh ash@tuis.ashutoshbind.com",
+		"go run github.com/Ashutoshbind15/portfolio-tui@main",
 	} {
 		if !strings.Contains(plain, needle) {
 			t.Errorf("contact missing %q", needle)

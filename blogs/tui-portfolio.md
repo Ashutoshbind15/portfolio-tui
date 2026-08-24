@@ -137,5 +137,5 @@ None of this is a framework. It is one model, a handful of child
 models, and strings that happen to be a UI.
 
 ```bash
-ssh "ash@tuis.ashutoshbind.com"
+go run github.com/Ashutoshbind15/portfolio-tui@main
 ```
