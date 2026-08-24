@@ -296,7 +296,7 @@ func (m *homeModel) renderPage() (string, [][2]int) {
 	b.blank()
 	b.add(styleMuted().Render(p.Location + "  ·  " + formatIST(m.now)))
 	b.blank()
-	b.add(sectionRule("software", w))
+	b.add(sectionRule("projects", w))
 	b.blank()
 
 	for _, project := range projects() {
@@ -336,10 +336,12 @@ func (m *homeModel) renderPage() (string, [][2]int) {
 
 	b.add(sectionRule("contact", w))
 	b.blank()
-	for _, line := range p.Contact {
-		b.add(wrapBullet(styleBody(), line, w))
+	if len(p.Contact) > 0 {
+		for _, line := range p.Contact {
+			b.add(wrapBullet(styleBody(), line, w))
+		}
+		b.blank()
 	}
-	b.blank()
 	b.add(styleFaint().Render("@  ") + styleBody().Render(p.Email))
 	b.add(styleFaint().Render("$  ") + styleBody().Render(p.SSH))
 	b.add(styleFaint().Render("   ") + styleMuted().Render(p.GitHub))
@@ -412,28 +414,58 @@ func (m homeModel) renderProjectRow(i int, p Project, width int) string {
 		return b.String()
 	}
 
-	b.WriteString("\n\n")
-	b.WriteString(wrapIndent(styleBody(), indent, p.Detail, width))
-	if p.GitHub != "" || p.Site != "" || p.SSH != "" || len(p.Tech) > 0 {
+	if p.Detail != "" {
+		b.WriteString("\n\n")
+		b.WriteString(wrapIndent(styleBody(), indent, p.Detail, width))
+	}
+	if projectHasLinks(p) || len(p.Tech) > 0 {
 		b.WriteString("\n")
 	}
-	if p.GitHub != "" {
+	for _, link := range projectLinks(p) {
 		b.WriteString("\n")
-		b.WriteString(wrapIndent(styleMuted(), indent, "github  "+p.GitHub, width))
-	}
-	if p.Site != "" {
-		b.WriteString("\n")
-		b.WriteString(wrapIndent(styleMuted(), indent, "site    "+p.Site, width))
-	}
-	if p.SSH != "" {
-		b.WriteString("\n")
-		b.WriteString(wrapIndent(styleMuted(), indent, "ssh     "+p.SSH, width))
+		b.WriteString(wrapIndent(styleMuted(), indent, padLinkLabel(link.Label)+link.Value, width))
 	}
 	if len(p.Tech) > 0 {
 		b.WriteString("\n")
 		b.WriteString(wrapIndent(styleMuted(), indent, strings.Join(p.Tech, "  ·  "), width))
 	}
 	return b.String()
+}
+
+type projectLink struct {
+	Label string
+	Value string
+}
+
+func projectHasLinks(p Project) bool {
+	return p.GitHub != "" || p.Site != "" || p.SSH != "" || p.Packages != "" || len(p.Npm) > 0 || len(p.More) > 0
+}
+
+func projectLinks(p Project) []projectLink {
+	var links []projectLink
+	if p.GitHub != "" {
+		links = append(links, projectLink{Label: "github", Value: p.GitHub})
+	}
+	for _, pkg := range p.Npm {
+		links = append(links, projectLink{Label: "npm", Value: pkg.Name + "  " + pkg.URL})
+	}
+	if p.Packages != "" {
+		links = append(links, projectLink{Label: "ghcr", Value: p.Packages})
+	}
+	if p.Site != "" {
+		links = append(links, projectLink{Label: "site", Value: p.Site})
+	}
+	for _, extra := range p.More {
+		links = append(links, projectLink{Label: extra.Label, Value: extra.URL})
+	}
+	if p.SSH != "" {
+		links = append(links, projectLink{Label: "ssh", Value: p.SSH})
+	}
+	return links
+}
+
+func padLinkLabel(label string) string {
+	return fmt.Sprintf("%-8s", label)
 }
 
 func (m homeModel) renderExperienceRow(i int, e Experience, width int) string {

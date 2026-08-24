@@ -105,12 +105,12 @@ func TestCollapsedNavNarrower(t *testing.T) {
 func TestHomeHasWebsiteSections(t *testing.T) {
 	m := sizedApp(80, 24)
 	plain := strings.ToLower(ansi.Strip(m.home.viewport.GetContent()))
-	for _, section := range []string{"software", "experience", "education", "stack", "contact"} {
+	for _, section := range []string{"projects", "experience", "education", "stack", "contact"} {
 		if !strings.Contains(plain, section) {
 			t.Errorf("home missing section %q", section)
 		}
 	}
-	for _, needle := range []string{"varypane", "indie hacking", "national institute of technology patna", "navsari"} {
+	for _, needle := range []string{"scribblesvg", "varipane", "indie hacking", "national institute of technology patna", "navsari"} {
 		if !strings.Contains(plain, needle) {
 			t.Errorf("home missing %q", needle)
 		}
@@ -158,20 +158,68 @@ func TestHomeMovesSelectionWithoutWrap(t *testing.T) {
 func TestHomeExpandTogglesDetail(t *testing.T) {
 	m := sizedApp(80, 24)
 	before := ansi.Strip(m.home.viewport.GetContent())
-	if strings.Contains(before, "starter templates") {
-		t.Fatalf("collapsed home should not show VaryPane detail")
+	if strings.Contains(before, "@scribblesvg/core") {
+		t.Fatalf("collapsed home should not show ScribbleSVG npm links")
 	}
 
 	m.home, _ = m.home.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	after := ansi.Strip(m.home.viewport.GetContent())
-	if !strings.Contains(after, "starter templates") {
+	if !strings.Contains(after, "@scribblesvg/core") {
 		t.Fatalf("enter should expand the selected project")
 	}
 
 	m.home, _ = m.home.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	closed := ansi.Strip(m.home.viewport.GetContent())
-	if strings.Contains(closed, "starter templates") {
+	if strings.Contains(closed, "@scribblesvg/core") {
 		t.Fatalf("second enter should collapse the project")
+	}
+}
+
+func TestProjectDetailMatchesSiteCopy(t *testing.T) {
+	m := sizedApp(80, 24)
+	m, _ = m.navigateTo(PageProjects)
+	m.setSizes()
+	m.projects, _ = m.projects.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	plain := strings.ToLower(ansi.Strip(m.projects.viewport.GetContent()))
+	needles := []string{
+		"scribblesvg",
+		"hand-drawn diagramming toolkit",
+		"what",
+		"a featherlight diagramming toolkit",
+		"why",
+		"i plan and reason systems by drawing",
+		"where",
+		"scribblesvg.ashutoshbind.com",
+		"technicals",
+		"layered svg on a simple state-driven canvas",
+		"upcoming",
+		"bring-your-own fonts",
+	}
+	for _, needle := range needles {
+		if !strings.Contains(plain, needle) {
+			t.Errorf("project detail missing %q", needle)
+		}
+	}
+	if strings.Contains(plain, "gallery") {
+		t.Fatal("project detail should not include site gallery copy")
+	}
+}
+
+func TestProjectDetailFitsTerminal(t *testing.T) {
+	const w, h = 80, 24
+	m := sizedApp(w, h)
+	m, _ = m.navigateTo(PageProjects)
+	m.setSizes()
+	m.projects, _ = m.projects.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m.setSizes()
+	lines := viewLines(m)
+	if len(lines) != h {
+		t.Fatalf("project detail height: got %d want %d\n%s", len(lines), h, strings.Join(lines, "\n"))
+	}
+	for i, line := range lines {
+		if got := ansi.StringWidth(line); got != w {
+			t.Errorf("line %d width=%d want=%d: %q", i, got, w, line)
+		}
 	}
 }
 

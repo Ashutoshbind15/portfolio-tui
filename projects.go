@@ -15,12 +15,7 @@ type projectItem struct {
 
 func (i projectItem) FilterValue() string { return i.project.Name }
 func (i projectItem) Title() string       { return i.project.Name }
-func (i projectItem) Description() string {
-	if i.project.Kind == "" {
-		return i.project.Summary
-	}
-	return i.project.Kind + "  ·  " + i.project.Summary
-}
+func (i projectItem) Description() string { return i.project.Summary }
 
 type projectsModel struct {
 	ctx      *Context
@@ -108,26 +103,38 @@ func renderProjectDetail(p Project, width int) string {
 	if p.Kind != "" {
 		b.WriteString(styleMuted().Render("  " + p.Kind))
 	}
-	b.WriteString("\n\n")
-	b.WriteString(styleBody().Width(w).Render(p.Summary))
-	b.WriteString("\n\n")
-	b.WriteString(styleMuted().Width(w).Render(p.Detail))
-	b.WriteString("\n\n")
-	if p.GitHub != "" {
-		b.WriteString(styleFaint().Render("github  "))
-		b.WriteString(styleMuted().Render(p.GitHub))
+	b.WriteString("\n")
+	if p.Tagline != "" {
 		b.WriteString("\n")
+		b.WriteString(styleMuted().Width(w).Render(p.Tagline))
 	}
-	if p.Site != "" {
-		b.WriteString(styleFaint().Render("site    "))
-		b.WriteString(styleMuted().Render(p.Site))
+
+	writeDetailSection(&b, "what", p.What, w)
+	writeDetailSection(&b, "why", p.Why, w)
+
+	if projectHasLinks(p) {
+		b.WriteString("\n\n")
+		b.WriteString(styleFaint().Render("where"))
 		b.WriteString("\n")
+		for _, link := range projectLinks(p) {
+			b.WriteString(styleFaint().Render(padLinkLabel(link.Label)))
+			b.WriteString(styleMuted().Render(link.Value))
+			b.WriteString("\n")
+		}
 	}
-	if p.SSH != "" {
-		b.WriteString(styleFaint().Render("ssh     "))
-		b.WriteString(styleMuted().Render(p.SSH))
+
+	writeDetailSection(&b, "technicals", p.Technicals, w)
+
+	if len(p.Upcoming) > 0 {
+		b.WriteString("\n\n")
+		b.WriteString(styleFaint().Render("upcoming"))
 		b.WriteString("\n")
+		for _, item := range p.Upcoming {
+			b.WriteString(styleMuted().Width(w).Render("•  " + item))
+			b.WriteString("\n")
+		}
 	}
+
 	if len(p.Tech) > 0 {
 		b.WriteString("\n")
 		b.WriteString(joinChips(p.Tech))
@@ -135,4 +142,14 @@ func renderProjectDetail(p Project, width int) string {
 	b.WriteString("\n\n")
 	b.WriteString(styleFaint().Render("esc back to the list"))
 	return lipgloss.NewStyle().Padding(1, 1, 0, 1).Render(b.String())
+}
+
+func writeDetailSection(b *strings.Builder, label, body string, width int) {
+	if body == "" {
+		return
+	}
+	b.WriteString("\n\n")
+	b.WriteString(styleFaint().Render(label))
+	b.WriteString("\n")
+	b.WriteString(styleBody().Width(width).Render(body))
 }
