@@ -23,6 +23,7 @@ type keyMap struct {
 	Prev      key.Binding
 	Open      key.Binding
 	Back      key.Binding
+	Move      key.Binding
 	ToggleNav key.Binding
 	Quit      key.Binding
 }
@@ -33,13 +34,25 @@ func newKeyMap() keyMap {
 		Prev:      key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("shift+tab", "prev")),
 		Open:      key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
 		Back:      key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "back")),
+		Move:      key.NewBinding(key.WithKeys("up", "down", "j", "k"), key.WithHelp("j/k", "move")),
 		ToggleNav: key.NewBinding(key.WithKeys("["), key.WithHelp("[", "nav")),
 		Quit:      key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 	}
 }
 
 func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Next, k.Open, k.Back, k.ToggleNav, k.Quit}
+	return []key.Binding{k.Next, k.Move, k.Open, k.Back, k.ToggleNav, k.Quit}
+}
+
+func (k keyMap) forPage(page Page) keyMap {
+	switch page {
+	case PageHome:
+		k.Open = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "expand"))
+		k.Move = key.NewBinding(key.WithKeys("up", "down", "j", "k"), key.WithHelp("j/k", "move"))
+	case PageStack:
+		k.Open = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "toggle"))
+	}
+	return k
 }
 
 func (k keyMap) FullHelp() [][]key.Binding {
@@ -125,6 +138,7 @@ func (m *appModel) contentSize() (width, height int) {
 func (m *appModel) setSizes() {
 	w, h := m.contentSize()
 	m.ctx.innerW = w
+	m.home.SetSize(w, h)
 	m.projects.SetSize(w, h)
 	m.experience.SetSize(w, h)
 	m.stack.SetSize(w, h)
@@ -227,7 +241,7 @@ func (m appModel) headerView() string {
 }
 
 func (m appModel) footerView() string {
-	help := styleFooter().Width(m.ctx.width).Render(m.help.View(m.keys))
+	help := styleFooter().Width(m.ctx.width).Render(m.help.View(m.keys.forPage(m.page)))
 	return lipgloss.JoinVertical(lipgloss.Left, m.splitRule("┴"), help)
 }
 

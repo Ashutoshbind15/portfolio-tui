@@ -15,7 +15,12 @@ type projectItem struct {
 
 func (i projectItem) FilterValue() string { return i.project.Name }
 func (i projectItem) Title() string       { return i.project.Name }
-func (i projectItem) Description() string { return i.project.Summary }
+func (i projectItem) Description() string {
+	if i.project.Kind == "" {
+		return i.project.Summary
+	}
+	return i.project.Kind + "  ·  " + i.project.Summary
+}
 
 type projectsModel struct {
 	ctx      *Context
@@ -93,6 +98,9 @@ func renderProjectDetail(p Project, width int) string {
 	w := max(20, width-2)
 	var b strings.Builder
 	b.WriteString(styleHeading().Render(p.Name))
+	if p.Kind != "" {
+		b.WriteString(styleMuted().Render("  " + p.Kind))
+	}
 	b.WriteString("\n\n")
 	b.WriteString(styleBody().Width(w).Render(p.Summary))
 	b.WriteString("\n\n")
@@ -106,6 +114,11 @@ func renderProjectDetail(p Project, width int) string {
 	if p.Site != "" {
 		b.WriteString(styleFaint().Render("site    "))
 		b.WriteString(styleMuted().Render(p.Site))
+		b.WriteString("\n")
+	}
+	if p.SSH != "" {
+		b.WriteString(styleFaint().Render("ssh     "))
+		b.WriteString(styleMuted().Render(p.SSH))
 		b.WriteString("\n")
 	}
 	if len(p.Tech) > 0 {

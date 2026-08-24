@@ -95,6 +95,79 @@ func TestCollapsedNavNarrower(t *testing.T) {
 	}
 }
 
+func TestHomeHasWebsiteSections(t *testing.T) {
+	m := sizedApp(80, 24)
+	plain := strings.ToLower(ansi.Strip(m.home.viewport.GetContent()))
+	for _, section := range []string{"software", "experience", "education", "stack", "contact"} {
+		if !strings.Contains(plain, section) {
+			t.Errorf("home missing section %q", section)
+		}
+	}
+	for _, needle := range []string{"varypane", "indie hacking", "national institute of technology patna", "navsari"} {
+		if !strings.Contains(plain, needle) {
+			t.Errorf("home missing %q", needle)
+		}
+	}
+}
+
+func TestHomeScrollbarWhenOverflow(t *testing.T) {
+	m := sizedApp(80, 24)
+	if m.home.viewport.TotalLineCount() <= m.home.viewport.Height() {
+		t.Fatalf("home should overflow at 80x24, got %d lines in height %d",
+			m.home.viewport.TotalLineCount(), m.home.viewport.Height())
+	}
+	plain := ansi.Strip(m.View().Content)
+	if !strings.Contains(plain, "█") {
+		t.Fatalf("expected scrollbar thumb on overflowing home")
+	}
+}
+
+func TestHomeMovesSelectionWithoutWrap(t *testing.T) {
+	m := sizedApp(80, 24)
+	if m.home.cursor != 0 {
+		t.Fatalf("start cursor=%d want 0", m.home.cursor)
+	}
+
+	m.home, _ = m.home.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
+	if m.home.cursor != 1 {
+		t.Fatalf("j should move to the next row, cursor=%d", m.home.cursor)
+	}
+
+	m.home, _ = m.home.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
+	m.home, _ = m.home.Update(tea.KeyPressMsg{Code: 'k', Text: "k"})
+	if m.home.cursor != 0 {
+		t.Fatalf("k at first row should stay put, cursor=%d", m.home.cursor)
+	}
+
+	last := len(m.home.items) - 1
+	m.home.cursor = last
+	m.home.refresh()
+	m.home, _ = m.home.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
+	if m.home.cursor != last {
+		t.Fatalf("j at last row should stay put, cursor=%d want %d", m.home.cursor, last)
+	}
+}
+
+func TestHomeExpandTogglesDetail(t *testing.T) {
+	m := sizedApp(80, 24)
+	before := ansi.Strip(m.home.viewport.GetContent())
+	if strings.Contains(before, "starter templates") {
+		t.Fatalf("collapsed home should not show VaryPane detail")
+	}
+
+	m.home, _ = m.home.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	after := ansi.Strip(m.home.viewport.GetContent())
+	if !strings.Contains(after, "starter templates") {
+		t.Fatalf("enter should expand the selected project")
+	}
+
+	m.home, _ = m.home.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	closed := ansi.Strip(m.home.viewport.GetContent())
+	if strings.Contains(closed, "starter templates") {
+		t.Fatalf("second enter should collapse the project")
+	}
+}
+
 func TestBlogScrollbarWhenOverflow(t *testing.T) {
 	m := sizedApp(80, 24)
 	m, _ = m.navigateTo(PageBlogs)
