@@ -98,6 +98,12 @@ func styleHeading() lipgloss.Style {
 		Bold(true)
 }
 
+func styleSection() lipgloss.Style {
+	return lipgloss.NewStyle().
+		Foreground(lipgloss.Color(colorAccent)).
+		Bold(true)
+}
+
 func styleMuted() lipgloss.Style {
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(colorMuted))
 }

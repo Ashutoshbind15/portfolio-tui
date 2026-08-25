@@ -10,7 +10,7 @@ import (
 	"github.com/charmbracelet/harmonica"
 )
 
-const splashFPS = 30
+const splashFPS = 60
 
 type splashFrameMsg time.Time
 
@@ -83,6 +83,7 @@ func (s splashModel) View() string {
 	p := profile()
 	settled := 1 - clamp01(math.Abs(s.namePos)/8)
 	shift := int(math.Round(s.namePos))
+	reveal := clamp01((settled - 0.1) / 0.75)
 
 	hint := "enter  ·  open the portfolio"
 	gap := 1
@@ -99,19 +100,19 @@ func (s splashModel) View() string {
 
 	stampBanner(grid, name, ox+(blockW-bannerWidth(name))/2, oy, func(col, _ int) string {
 		return mixHex(colorAccent, colorBright, float64(col)/float64(max(1, bannerWidth(name)-1)))
-	}, true)
+	}, true, reveal)
 
 	by := oy + len(name) + gap
 	stampBanner(grid, bind, ox+(blockW-bannerWidth(bind))/2, by, func(int, int) string {
 		return colorAccent
-	}, true)
+	}, true, clamp01(reveal*1.25-0.25))
 
 	my := by + len(bind) + 1
-	stampLine(grid, p.Role, ox+(blockW-lipgloss.Width(p.Role))/2, my, colorMuted, false)
+	stampLine(grid, p.Role, ox+(blockW-lipgloss.Width(p.Role))/2, my, colorMuted, false, clamp01(reveal*1.5-0.5))
 
 	pulse := 0.45 + 0.55*settled*(0.5+0.5*math.Sin(s.t*2.4))
 	hint = "  " + hint + "  "
-	stampLine(grid, hint, max(0, (w-lipgloss.Width(hint))/2), h-2, mixHex(colorFaint, colorAccent, pulse), false)
+	stampLine(grid, hint, max(0, (w-lipgloss.Width(hint))/2), h-2, mixHex(colorFaint, colorAccent, pulse), false, 1)
 
 	return renderSplash(grid)
 }
@@ -139,21 +140,31 @@ func bannerWidth(lines []string) int {
 	return w
 }
 
-func stampBanner(grid [][]splashCell, lines []string, ox, oy int, fg func(col, row int) string, bold bool) {
+func stampBanner(grid [][]splashCell, lines []string, ox, oy int, fg func(col, row int) string, bold bool, reveal float64) {
+	bw := max(1, bannerWidth(lines)-1)
 	for i, line := range lines {
 		for j, r := range []rune(line) {
+			alpha := clamp01((reveal - float64(j)/float64(bw)*0.85) * 5)
+			if alpha <= 0 {
+				continue
+			}
 			if r == ' ' {
 				stampCell(grid, ox+j, oy+i, splashCell{r: ' ', fg: colorFaint})
 				continue
 			}
-			stampCell(grid, ox+j, oy+i, splashCell{r: r, fg: fg(j, i), bold: bold})
+			stampCell(grid, ox+j, oy+i, splashCell{r: r, fg: mixHex(colorBg, fg(j, i), alpha), bold: bold})
 		}
 	}
 }
 
-func stampLine(grid [][]splashCell, text string, ox, oy int, fg string, bold bool) {
+func stampLine(grid [][]splashCell, text string, ox, oy int, fg string, bold bool, reveal float64) {
+	tw := max(1, lipgloss.Width(text)-1)
 	for j, r := range []rune(text) {
-		stampCell(grid, ox+j, oy, splashCell{r: r, fg: fg, bold: bold})
+		alpha := clamp01((reveal - float64(j)/float64(tw)*0.8) * 5)
+		if alpha <= 0 {
+			continue
+		}
+		stampCell(grid, ox+j, oy, splashCell{r: r, fg: mixHex(colorBg, fg, alpha), bold: bold})
 	}
 }
 

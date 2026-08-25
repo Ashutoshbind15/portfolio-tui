@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 	"testing"
+	"time"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -300,6 +301,13 @@ func TestSplashFitsTerminal(t *testing.T) {
 
 func TestSplashShowsNameAndEnterHint(t *testing.T) {
 	m := sizedSplash(80, 24)
+	for i := range 45 {
+		var cmd tea.Cmd
+		m.splash, cmd = m.splash.Update(splashFrameMsg(time.Now().Add(time.Duration(i) * time.Second / splashFPS)))
+		if cmd == nil {
+			t.Fatal("splash should keep ticking")
+		}
+	}
 	plain := ansi.Strip(m.View().Content)
 	if !strings.Contains(plain, "/___/") && !strings.Contains(plain, "_____") {
 		t.Fatalf("expected big-name banner on splash\n%s", plain)

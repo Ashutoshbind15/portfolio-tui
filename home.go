@@ -288,6 +288,9 @@ func (m *homeModel) renderPage() (string, [][2]int) {
 	idx := 0
 
 	b.add(styleHeading().Render(p.Name))
+	if uw := min(w, lipgloss.Width(p.Name)); uw > 0 {
+		b.add(styleAccent().Render(strings.Repeat("─", uw)))
+	}
 	b.add(styleMuted().Render(p.Role))
 	b.blank()
 	for _, line := range p.Bullets {
@@ -350,13 +353,15 @@ func (m *homeModel) renderPage() (string, [][2]int) {
 }
 
 func sectionRule(title string, width int) string {
-	label := " " + title + " "
+	label := " " + strings.ToUpper(title) + " "
 	fill := max(0, width-2-lipgloss.Width(label))
-	rule := strings.Repeat("─", 2) + label + strings.Repeat("─", fill)
-	if lipgloss.Width(rule) > width {
-		rule = "─ " + title
+	var b strings.Builder
+	b.WriteString(styleFaint().Render("──"))
+	b.WriteString(styleSection().Render(label))
+	if fill > 0 {
+		b.WriteString(styleFaint().Render(strings.Repeat("─", fill)))
 	}
-	return styleFaint().Render(rule)
+	return b.String()
 }
 
 func (m homeModel) caret(i int) string {
