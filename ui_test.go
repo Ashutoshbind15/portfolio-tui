@@ -8,35 +8,28 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-func TestNavToggleAlignsWithIcons(t *testing.T) {
+func TestNavToggleCenteredInSidebar(t *testing.T) {
 	m := sizedApp(80, 24)
 	lines := viewLines(m)
-	iconCol := -1
-	for _, line := range lines {
-		i := strings.Index(line, "🏠")
-		if i < 0 {
+	mid := m.columnWidth() + sidebarBorderW + sidebarPadX + sidebarExpandedInner/2
+	found := false
+	for i := len(lines) - 1; i >= 0; i-- {
+		idx := strings.LastIndex(lines[i], "<")
+		if idx < 0 {
 			continue
 		}
-		iconCol = ansi.StringWidth(line[:i])
+		col := ansi.StringWidth(lines[i][:idx])
+		if col < m.columnWidth() {
+			continue
+		}
+		found = true
+		if abs(col-mid) > 1 {
+			t.Fatalf("toggle col %d, want ~%d\n%s", col, mid, lines[i])
+		}
 		break
 	}
-	if iconCol < 0 {
-		t.Fatal("missing home icon")
-	}
-
-	toggleCol := -1
-	for _, line := range lines {
-		i := strings.LastIndex(line, "<")
-		if i < 0 {
-			continue
-		}
-		toggleCol = ansi.StringWidth(line[:i])
-	}
-	if toggleCol < 0 {
+	if !found {
 		t.Fatal("missing expanded nav toggle")
-	}
-	if toggleCol != iconCol && toggleCol != iconCol+1 {
-		t.Fatalf("toggle col %d, icon col %d", toggleCol, iconCol)
 	}
 }
 
@@ -71,6 +64,12 @@ func TestProjectDetailSectionHeadings(t *testing.T) {
 		if !strings.Contains(plain, heading) {
 			t.Errorf("project detail missing heading %q", heading)
 		}
+	}
+	if !strings.Contains(plain, "varypane.com") {
+		t.Error("VaryPane detail missing site link")
+	}
+	if !strings.Contains(strings.ToLower(plain), "site") {
+		t.Error("VaryPane detail missing site label")
 	}
 }
 

@@ -16,6 +16,7 @@ const (
 func sizeViewport(vp *viewport.Model, width, height int) {
 	vp.SetWidth(max(0, width-scrollbarGutter))
 	vp.SetHeight(max(0, height))
+	vp.MouseWheelEnabled = true
 	vp.MouseWheelDelta = 1
 }
 

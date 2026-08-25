@@ -109,6 +109,18 @@ func homeZoneID(i int) string {
 	return "home-item-" + strconv.Itoa(i)
 }
 
+func (m homeModel) itemAt(msg tea.MouseMsg) int {
+	if m.ctx.zone == nil {
+		return -1
+	}
+	for i := range m.items {
+		if m.ctx.zone.Get(homeZoneID(i)).InBounds(msg) {
+			return i
+		}
+	}
+	return -1
+}
+
 func (m *homeModel) toggle(i int) {
 	if i < 0 || i >= len(m.items) {
 		return
@@ -197,15 +209,18 @@ func (m homeModel) Update(msg tea.Msg) (homeModel, tea.Cmd) {
 		}
 
 	case tea.MouseClickMsg:
-		if m.ctx.zone != nil {
-			for i := range m.items {
-				if m.ctx.zone.Get(homeZoneID(i)).InBounds(msg) {
-					m.cursor = i
-					m.toggle(i)
-					m.refresh()
-					return m, nil
-				}
-			}
+		if i := m.itemAt(msg); i >= 0 {
+			m.cursor = i
+			m.toggle(i)
+			m.refresh()
+			return m, nil
+		}
+
+	case tea.MouseMotionMsg:
+		if i := m.itemAt(msg); i >= 0 && i != m.cursor {
+			m.cursor = i
+			m.refresh()
+			return m, nil
 		}
 	}
 
@@ -299,7 +314,7 @@ func (m *homeModel) renderPage() (string, [][2]int) {
 	b.blank()
 	b.add(styleMuted().Render(p.Location + "  ·  " + formatIST(m.now)))
 	b.blank()
-	b.add(sectionRule("projects", w))
+	b.add(sectionRule("software", w))
 	b.blank()
 
 	for _, project := range projects() {
@@ -376,11 +391,19 @@ func (m homeModel) caret(i int) string {
 	return styleFaint().Render(glyph)
 }
 
-func (m homeModel) markRow(i int, line string) string {
-	if m.ctx.zone != nil {
-		return m.ctx.zone.Mark(homeZoneID(i), line)
+func (m homeModel) markBlock(i int, block string, width int) string {
+	lines := strings.Split(strings.TrimRight(block, "\n"), "\n")
+	for j, line := range lines {
+		n := lipgloss.Width(line)
+		if width > 0 && n < width {
+			lines[j] = line + strings.Repeat(" ", width-n)
+		}
 	}
-	return line
+	block = strings.Join(lines, "\n")
+	if m.ctx.zone != nil {
+		return m.ctx.zone.Mark(homeZoneID(i), block)
+	}
+	return block
 }
 
 func padRow(left, right string, width int) string {
@@ -408,68 +431,50 @@ func (m homeModel) renderProjectRow(i int, p Project, width int) string {
 	indent := 3
 	title := m.itemTitle(i, p.Name)
 	kind := styleMuted().Render(p.Kind)
-	head := m.markRow(i, padRow(m.caret(i)+"  "+title, kind, width))
+	head := padRow(m.caret(i)+"  "+title, kind, width)
 
 	var b strings.Builder
 	b.WriteString(head)
 	b.WriteString("\n")
+	if p.Tagline != "" {
+		b.WriteString(wrapIndent(styleFaint(), indent, p.Tagline, width))
+		b.WriteString("\n")
+	}
 	b.WriteString(wrapIndent(styleMuted(), indent, p.Summary, width))
 	if !m.isOpen(i) {
-		return b.String()
+		return m.markBlock(i, b.String(), width)
 	}
 
-	if p.Detail != "" {
-		b.WriteString("\n\n")
-		b.WriteString(wrapIndent(styleBody(), indent, p.Detail, width))
-	}
-	if projectHasLinks(p) || len(p.Tech) > 0 {
+	if projectHasLinks(p) {
 		b.WriteString("\n")
 	}
 	for _, link := range projectLinks(p) {
 		b.WriteString("\n")
-		b.WriteString(wrapIndent(styleMuted(), indent, padLinkLabel(link.Label)+link.Value, width))
+		b.WriteString(wrapIndent(styleMuted(), indent, padLinkLabel(link.Label)+displayLinkValue(link.Value), width))
 	}
-	if len(p.Tech) > 0 {
-		b.WriteString("\n")
-		b.WriteString(wrapIndent(styleMuted(), indent, strings.Join(p.Tech, "  ·  "), width))
-	}
-	return b.String()
-}
-
-type projectLink struct {
-	Label string
-	Value string
+	return m.markBlock(i, b.String(), width)
 }
 
 func projectHasLinks(p Project) bool {
-	return p.GitHub != "" || p.Site != "" || p.SSH != "" || p.Packages != "" || len(p.Npm) > 0 || len(p.More) > 0
+	return len(p.Links) > 0
 }
 
-func projectLinks(p Project) []projectLink {
-	var links []projectLink
-	if p.GitHub != "" {
-		links = append(links, projectLink{Label: "github", Value: p.GitHub})
-	}
-	for _, pkg := range p.Npm {
-		links = append(links, projectLink{Label: "npm", Value: pkg.Name + "  " + pkg.URL})
-	}
-	if p.Packages != "" {
-		links = append(links, projectLink{Label: "ghcr", Value: p.Packages})
-	}
-	if p.Site != "" {
-		links = append(links, projectLink{Label: "site", Value: p.Site})
-	}
-	for _, extra := range p.More {
-		links = append(links, projectLink{Label: extra.Label, Value: extra.URL})
-	}
-	if p.SSH != "" {
-		links = append(links, projectLink{Label: "ssh", Value: p.SSH})
-	}
-	return links
+func projectLinks(p Project) []ProjectLink {
+	return p.Links
 }
 
 func padLinkLabel(label string) string {
-	return fmt.Sprintf("%-8s", label)
+	const w = 16
+	if n := lipgloss.Width(label); n >= w {
+		return label + "  "
+	}
+	return fmt.Sprintf("%-*s", w, label)
+}
+
+func displayLinkValue(v string) string {
+	v = strings.TrimPrefix(v, "https://")
+	v = strings.TrimPrefix(v, "http://")
+	return v
 }
 
 func fitIcon(s string) string {
@@ -502,20 +507,20 @@ func (m homeModel) renderExperienceRow(i int, e Experience, width int) string {
 	indent := 3
 	title := e.Role
 	if e.Org != "" {
-		title += " · " + e.Org
+		title += " at " + e.Org
 	}
 	badge := ""
 	if e.Current {
-		badge = styleAccent().Render("now")
+		badge = styleAccent().Render("current")
 	}
-	head := m.markRow(i, padRow(m.caret(i)+"  "+m.itemTitle(i, title), badge, width))
+	head := padRow(m.caret(i)+"  "+m.itemTitle(i, title), badge, width)
 
 	var b strings.Builder
 	b.WriteString(head)
 	b.WriteString("\n")
 	b.WriteString(wrapIndent(styleMuted(), indent, e.Period, width))
 	if !m.isOpen(i) {
-		return b.String()
+		return m.markBlock(i, b.String(), width)
 	}
 
 	b.WriteString("\n\n")
@@ -531,7 +536,7 @@ func (m homeModel) renderExperienceRow(i int, e Experience, width int) string {
 		b.WriteString("\n\n")
 		b.WriteString(wrapIndent(styleMuted(), indent, strings.Join(e.Tech, "  ·  "), width))
 	}
-	return b.String()
+	return m.markBlock(i, b.String(), width)
 }
 
 func (m homeModel) renderEducation(width int) string {
@@ -554,13 +559,13 @@ func (m homeModel) renderStackRow(i, n int, cat StackCategory, width int) string
 	indent := 3
 	label := fmt.Sprintf("%02d  %s", n, cat.Name)
 	count := styleMuted().Render(fmt.Sprintf("×%d", len(cat.Items)))
-	head := m.markRow(i, padRow(m.caret(i)+"  "+m.itemTitle(i, label), count, width))
+	head := padRow(m.caret(i)+"  "+m.itemTitle(i, label), count, width)
 	if !m.isOpen(i) {
-		return head
+		return m.markBlock(i, head, width)
 	}
 	var b strings.Builder
 	b.WriteString(head)
 	b.WriteString("\n")
 	b.WriteString(wrapIndent(styleMuted(), indent, strings.Join(cat.Items, "  ·  "), width))
-	return b.String()
+	return m.markBlock(i, b.String(), width)
 }

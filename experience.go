@@ -17,10 +17,10 @@ func (i experienceItem) FilterValue() string { return i.exp.Role + " " + i.exp.O
 func (i experienceItem) Title() string {
 	title := i.exp.Role
 	if i.exp.Org != "" {
-		title += " · " + i.exp.Org
+		title += " at " + i.exp.Org
 	}
 	if i.exp.Current {
-		title += "  now"
+		title += "  current"
 	}
 	return title
 }
@@ -40,7 +40,7 @@ func newExperienceModel(ctx *Context) experienceModel {
 	}
 	return experienceModel{
 		ctx:      ctx,
-		list:     newItemList("Experience", items, 0, 0),
+		list:     newItemList("Experience", items, 0, 0, ctx.zone, zoneWork),
 		viewport: viewport.New(),
 	}
 }
@@ -65,6 +65,16 @@ func (m *experienceModel) refreshDetail() {
 	m.viewport.SetContent(renderExperienceDetail(e, m.viewport.Width()))
 }
 
+func (m *experienceModel) openSelected() {
+	it, ok := m.list.SelectedItem().(experienceItem)
+	if !ok {
+		return
+	}
+	m.openID = it.exp.ID
+	m.refreshDetail()
+	m.viewport.GotoTop()
+}
+
 func (m experienceModel) Update(msg tea.Msg) (experienceModel, tea.Cmd) {
 	if m.openID != "" {
 		if key, ok := msg.(tea.KeyPressMsg); ok && key.String() == "esc" {
@@ -77,11 +87,15 @@ func (m experienceModel) Update(msg tea.Msg) (experienceModel, tea.Cmd) {
 	}
 
 	if key, ok := msg.(tea.KeyPressMsg); ok && key.String() == "enter" {
-		if it, ok := m.list.SelectedItem().(experienceItem); ok {
-			m.openID = it.exp.ID
-			m.refreshDetail()
-			return m, nil
+		m.openSelected()
+		return m, nil
+	}
+
+	if consumed, open := handleListPointer(m.ctx.zone, zoneWork, &m.list, msg); consumed {
+		if open {
+			m.openSelected()
 		}
+		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -97,7 +111,7 @@ func (m experienceModel) View() string {
 }
 
 func (m *experienceModel) applyTheme() {
-	restyleList(&m.list)
+	restyleList(&m.list, m.ctx.zone, zoneWork)
 	if m.openID != "" {
 		m.refreshDetail()
 	}

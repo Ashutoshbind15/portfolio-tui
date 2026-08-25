@@ -151,7 +151,7 @@ func newBlogsModel(ctx *Context) blogsModel {
 	}
 	return blogsModel{
 		ctx:      ctx,
-		list:     newItemList("Blogs", items, 0, 0),
+		list:     newItemList("Blogs", items, 0, 0, ctx.zone, zoneBlogs),
 		viewport: viewport.New(),
 	}
 }
@@ -176,6 +176,16 @@ func (m *blogsModel) refreshDetail() {
 	m.viewport.SetContent(renderBlogDetail(b, m.viewport.Width()))
 }
 
+func (m *blogsModel) openSelected() {
+	it, ok := m.list.SelectedItem().(blogItem)
+	if !ok {
+		return
+	}
+	m.openID = it.blog.ID
+	m.refreshDetail()
+	m.viewport.GotoTop()
+}
+
 func (m blogsModel) Update(msg tea.Msg) (blogsModel, tea.Cmd) {
 	if m.openID != "" {
 		if key, ok := msg.(tea.KeyPressMsg); ok && key.String() == "esc" {
@@ -188,11 +198,15 @@ func (m blogsModel) Update(msg tea.Msg) (blogsModel, tea.Cmd) {
 	}
 
 	if key, ok := msg.(tea.KeyPressMsg); ok && key.String() == "enter" {
-		if it, ok := m.list.SelectedItem().(blogItem); ok {
-			m.openID = it.blog.ID
-			m.refreshDetail()
-			return m, nil
+		m.openSelected()
+		return m, nil
+	}
+
+	if consumed, open := handleListPointer(m.ctx.zone, zoneBlogs, &m.list, msg); consumed {
+		if open {
+			m.openSelected()
 		}
+		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -208,7 +222,7 @@ func (m blogsModel) View() string {
 }
 
 func (m *blogsModel) applyTheme() {
-	restyleList(&m.list)
+	restyleList(&m.list, m.ctx.zone, zoneBlogs)
 	if m.openID != "" {
 		m.refreshDetail()
 	}

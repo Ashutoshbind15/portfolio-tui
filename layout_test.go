@@ -106,12 +106,12 @@ func TestCollapsedNavNarrower(t *testing.T) {
 func TestHomeHasWebsiteSections(t *testing.T) {
 	m := sizedApp(80, 24)
 	plain := strings.ToLower(ansi.Strip(m.home.viewport.GetContent()))
-	for _, section := range []string{"projects", "experience", "education", "stack", "contact"} {
+	for _, section := range []string{"software", "experience", "education", "stack", "contact"} {
 		if !strings.Contains(plain, section) {
 			t.Errorf("home missing section %q", section)
 		}
 	}
-	for _, needle := range []string{"scribblesvg", "varipane", "indie hacking", "national institute of technology patna", "navsari"} {
+	for _, needle := range []string{"scribblesvg", "varypane", "ai ui comparator", "indie hacking", "national institute of technology patna", "navsari"} {
 		if !strings.Contains(plain, needle) {
 			t.Errorf("home missing %q", needle)
 		}
@@ -163,6 +163,7 @@ func TestHomeExpandTogglesDetail(t *testing.T) {
 		t.Fatalf("collapsed home should not show ScribbleSVG npm links")
 	}
 
+	m.home, _ = m.home.Update(tea.KeyPressMsg{Code: 'j', Text: "j"})
 	m.home, _ = m.home.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
 	after := ansi.Strip(m.home.viewport.GetContent())
 	if !strings.Contains(after, "@scribblesvg/core") {
@@ -180,7 +181,8 @@ func TestProjectDetailMatchesSiteCopy(t *testing.T) {
 	m := sizedApp(80, 24)
 	m, _ = m.navigateTo(PageProjects)
 	m.setSizes()
-	m.projects, _ = m.projects.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	m.projects.openID = "scribblesvg"
+	m.projects.refreshDetail()
 	plain := strings.ToLower(ansi.Strip(m.projects.viewport.GetContent()))
 	needles := []string{
 		"scribblesvg",
@@ -190,7 +192,13 @@ func TestProjectDetailMatchesSiteCopy(t *testing.T) {
 		"why",
 		"i plan and reason systems by drawing",
 		"where",
+		"github",
+		"core",
+		"react-utils",
+		"playground",
+		"docs",
 		"scribblesvg.ashutoshbind.com",
+		"scribblesvg-docs.ashutoshbind.com",
 		"technicals",
 		"layered svg on a simple state-driven canvas",
 		"upcoming",
@@ -276,6 +284,33 @@ func TestThemeSwitcherInSidebar(t *testing.T) {
 	}
 	if !strings.Contains(ansi.Strip(m.View().Content), "◆") {
 		t.Fatal("expected active theme marker in sidebar")
+	}
+}
+
+func TestThemeLabelAlignsWithName(t *testing.T) {
+	m := sizedApp(80, 24)
+	var themeCol, nameCol = -1, -1
+	for _, line := range viewLines(m) {
+		if i := strings.Index(line, "theme"); i >= 0 && themeCol < 0 {
+			themeCol = ansi.StringWidth(line[:i])
+		}
+		if i := strings.Index(line, "pumice"); i >= 0 && nameCol < 0 {
+			nameCol = ansi.StringWidth(line[:i])
+		}
+	}
+	if themeCol < 0 || nameCol < 0 {
+		t.Fatalf("theme col=%d name col=%d", themeCol, nameCol)
+	}
+	if themeCol != nameCol {
+		t.Fatalf("theme starts at col %d, pumice at %d", themeCol, nameCol)
+	}
+}
+
+func TestThemeSwatchesHaveGap(t *testing.T) {
+	m := sizedApp(80, 24)
+	plain := ansi.Strip(m.themeSwatches(sidebarInnerWidth(false)))
+	if !strings.Contains(plain, "◆ ●") {
+		t.Fatalf("selected swatch should leave a gap before the next color, got %q", plain)
 	}
 }
 
@@ -394,5 +429,101 @@ func TestThemeCycleKeepsLayout(t *testing.T) {
 				t.Fatalf("theme %s line %d width=%d want=%d", m.themeID, i, got, w)
 			}
 		}
+	}
+}
+
+func TestHomeVaryPaneLinkSaysSite(t *testing.T) {
+	m := sizedApp(80, 24)
+	m.home, _ = m.home.Update(tea.KeyPressMsg{Code: tea.KeyEnter})
+	plain := ansi.Strip(m.home.viewport.GetContent())
+	if !strings.Contains(plain, "site") {
+		t.Fatal("expected site label on expanded VaryPane")
+	}
+	if !strings.Contains(plain, "varypane.com") {
+		t.Fatal("expected varypane.com on expanded VaryPane")
+	}
+	if strings.Contains(plain, "https://varypane.com") {
+		t.Fatal("home links should drop the https:// prefix")
+	}
+}
+
+func TestDetailOpensScrolledToTop(t *testing.T) {
+	m := sizedApp(80, 24)
+	var cmd tea.Cmd
+	m, cmd = m.navigateTo(PageProjects)
+	_ = cmd
+	m.setSizes()
+	m.projects.openSelected()
+	if m.projects.openID == "" {
+		t.Fatal("expected a project to open")
+	}
+	m.projects.viewport.SetYOffset(8)
+	if m.projects.viewport.YOffset() == 0 {
+		t.Skip("detail is too short to scroll")
+	}
+	m.projects, _ = m.projects.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	m.projects.list.Select(1)
+	m.projects.openSelected()
+	if m.projects.viewport.YOffset() != 0 {
+		t.Fatalf("new project should start at top, y=%d", m.projects.viewport.YOffset())
+	}
+
+	m, _ = m.navigateTo(PageBlogs)
+	m.setSizes()
+	m.blogs.openSelected()
+	m.blogs.viewport.SetYOffset(6)
+	m.blogs, _ = m.blogs.Update(tea.KeyPressMsg{Code: tea.KeyEsc})
+	if n := len(m.blogs.list.Items()); n > 1 {
+		m.blogs.list.Select(1)
+	}
+	m.blogs.openSelected()
+	if m.blogs.viewport.YOffset() != 0 {
+		t.Fatalf("new blog should start at top, y=%d", m.blogs.viewport.YOffset())
+	}
+}
+
+func TestProjectListClickOpens(t *testing.T) {
+	m := sizedApp(80, 24)
+	m, _ = m.navigateTo(PageProjects)
+	m.setSizes()
+	_ = m.View()
+	z := m.ctx.zone.Get(listZoneID(zoneProjects, 0))
+	if z.IsZero() {
+		t.Fatal("expected clickable project row")
+	}
+	mod, _ := m.Update(tea.MouseClickMsg{X: z.StartX, Y: z.StartY, Button: tea.MouseLeft})
+	m = mod.(appModel)
+	if m.projects.openID == "" {
+		t.Fatal("click should open a project")
+	}
+}
+
+func TestNavHoverTracksZone(t *testing.T) {
+	m := sizedApp(80, 24)
+	_ = m.View()
+	z := m.ctx.zone.Get("nav-projects")
+	if z.IsZero() {
+		t.Fatal("expected projects nav zone")
+	}
+	mod, _ := m.Update(tea.MouseMotionMsg{X: z.StartX, Y: z.StartY})
+	m = mod.(appModel)
+	if m.ctx.hover != "nav-projects" {
+		t.Fatalf("hover=%q want nav-projects", m.ctx.hover)
+	}
+}
+
+func TestHomeHoverMovesCursor(t *testing.T) {
+	m := sizedApp(80, 24)
+	m.home.cursor = 1
+	m.home.refresh()
+	_ = m.View()
+	z := m.ctx.zone.Get(homeZoneID(0))
+	if z.IsZero() {
+		t.Fatal("expected home item zone")
+	}
+	mod, _ := m.Update(tea.MouseMotionMsg{X: z.StartX, Y: z.StartY})
+	m = mod.(appModel)
+	if m.home.cursor != 0 {
+		t.Fatalf("cursor=%d want 0", m.home.cursor)
 	}
 }

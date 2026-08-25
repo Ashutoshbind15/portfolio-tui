@@ -46,33 +46,31 @@ func (m appModel) sidebarView(height int) string {
 	}
 	nav := lipgloss.JoinVertical(lipgloss.Left, rows...)
 
-	toggle := m.navToggle(innerW)
-	picker := m.themePicker(innerW)
-	toggleH := lipgloss.Height(toggle)
-	pickerH := lipgloss.Height(picker)
-	navSlot := max(0, innerH-toggleH-pickerH)
+	dock := m.sidebarDock(innerW)
+	navSlot := max(0, innerH-lipgloss.Height(dock))
 	nav = lipgloss.NewStyle().
 		Width(innerW).
 		Height(navSlot).
 		Render(nav)
 
-	inner := lipgloss.JoinVertical(lipgloss.Left, nav, picker, toggle)
+	inner := lipgloss.JoinVertical(lipgloss.Left, nav, dock)
 	return st.Height(max(0, height)).Render(inner)
 }
 
 func (m appModel) navRow(page Page, width int) string {
 	active := page == m.page
+	hover := m.hovering("nav-" + string(page))
 
 	var row string
 	if m.navCollapsed {
-		row = styleNavIcon(active).
+		row = styleNavIcon(active, hover).
 			Width(width).
 			Render(page.Icon())
 	} else {
 		labelW := max(0, width-navIconWidth-navGapWidth)
-		icon := styleNavIcon(active).Render(page.Icon())
-		gap := styleNavGap(active).Render(" ")
-		label := styleNavLabel(active).
+		icon := styleNavIcon(active, hover).Render(page.Icon())
+		gap := styleNavGap(active, hover).Render(" ")
+		label := styleNavLabel(active, hover).
 			Width(labelW).
 			Height(1).
 			Align(lipgloss.Left, lipgloss.Center).
@@ -87,17 +85,33 @@ func (m appModel) navRow(page Page, width int) string {
 	return row
 }
 
+func (m appModel) sidebarDock(width int) string {
+	if width <= 0 {
+		return ""
+	}
+	rule := styleFaint().Width(width).Render(strings.Repeat("─", width))
+	picker := m.themePicker(width)
+	toggle := m.navToggle(width)
+	gap := lipgloss.NewStyle().Width(width).Height(1).Render(" ")
+	return lipgloss.JoinVertical(lipgloss.Left, rule, picker, gap, toggle)
+}
+
 func (m appModel) navToggle(width int) string {
 	glyph := "<"
 	if m.navCollapsed {
 		glyph = ">"
 	}
-	icon := styleFaint().
-		Width(navIconWidth).
+	st := lipgloss.NewStyle().
+		Width(width).
 		Height(1).
-		Align(lipgloss.Left, lipgloss.Center).
-		Render(glyph)
-	row := lipgloss.NewStyle().Width(width).Render(icon)
+		Align(lipgloss.Center, lipgloss.Center).
+		Foreground(lipgloss.Color(colorFaint))
+	if m.hovering("nav-toggle") {
+		st = st.
+			Foreground(lipgloss.Color(colorBright)).
+			Background(lipgloss.Color(colorSurface))
+	}
+	row := st.Render(glyph)
 	if m.ctx.zone != nil {
 		row = m.ctx.zone.Mark("nav-toggle", row)
 	}
@@ -111,42 +125,64 @@ func (m appModel) themePicker(width int) string {
 	t := currentTheme()
 
 	if m.navCollapsed {
-		swatch := lipgloss.NewStyle().
+		st := lipgloss.NewStyle().
 			Width(width).
 			Height(1).
 			Align(lipgloss.Center, lipgloss.Center).
-			Foreground(lipgloss.Color(t.Accent)).
-			Render("◆")
+			Foreground(lipgloss.Color(t.Accent))
+		if m.hovering("theme-cycle") {
+			st = st.Background(lipgloss.Color(colorSurface))
+		}
+		swatch := st.Render("◆")
 		if m.ctx.zone != nil {
 			swatch = m.ctx.zone.Mark("theme-cycle", swatch)
 		}
-		return lipgloss.NewStyle().MarginTop(1).Width(width).Render(swatch)
+		return swatch
 	}
 
-	label := styleFaint().Width(width).Render("theme")
-	name := styleAccent().Width(width).Render(strings.ToLower(t.Name))
+	nameSt := lipgloss.NewStyle().Foreground(lipgloss.Color(colorAccent))
+	if m.hovering("theme-cycle") {
+		nameSt = nameSt.
+			Foreground(lipgloss.Color(colorBg)).
+			Background(lipgloss.Color(colorAccent))
+	}
+	name := nameSt.Render(strings.ToLower(t.Name))
+	if m.ctx.zone != nil {
+		name = m.ctx.zone.Mark("theme-cycle", name)
+	}
 
+	label := styleFaint().Render("theme")
+	swatches := m.themeSwatches(width)
+	return lipgloss.NewStyle().Width(width).Render(
+		lipgloss.JoinVertical(lipgloss.Left, label, name, swatches),
+	)
+}
+
+func (m appModel) themeSwatches(width int) string {
 	themes := allThemes()
-	const perRow = 3
+	const cellW = 2
+	perRow := max(1, width/cellW)
+	t := currentTheme()
 	var rows []string
 	for i := 0; i < len(themes); i += perRow {
 		end := min(i+perRow, len(themes))
 		var cells []string
-		for j, th := range themes[i:end] {
+		for _, th := range themes[i:end] {
+			id := "theme-" + th.ID
+			hover := m.hovering(id)
 			glyph := "●"
 			st := lipgloss.NewStyle().Foreground(lipgloss.Color(th.Accent))
 			if th.ID == t.ID {
 				glyph = "◆"
-				st = lipgloss.NewStyle().
+				st = st.
 					Foreground(lipgloss.Color(th.Bg)).
 					Background(lipgloss.Color(th.Accent))
+			} else if hover {
+				st = st.Background(lipgloss.Color(colorSurface))
 			}
-			cell := st.Render(glyph)
+			cell := lipgloss.JoinHorizontal(lipgloss.Center, st.Render(glyph), " ")
 			if m.ctx.zone != nil {
-				cell = m.ctx.zone.Mark("theme-"+th.ID, cell)
-			}
-			if j > 0 {
-				cells = append(cells, " ")
+				cell = m.ctx.zone.Mark(id, cell)
 			}
 			cells = append(cells, cell)
 		}
@@ -154,9 +190,7 @@ func (m appModel) themePicker(width int) string {
 			lipgloss.JoinHorizontal(lipgloss.Center, cells...),
 		))
 	}
-
-	block := lipgloss.JoinVertical(lipgloss.Left, append([]string{label, name}, rows...)...)
-	return lipgloss.NewStyle().MarginTop(1).Width(width).Render(block)
+	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
 
 func (m appModel) toggleNav() appModel {

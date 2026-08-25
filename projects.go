@@ -15,7 +15,7 @@ type projectItem struct {
 
 func (i projectItem) FilterValue() string { return i.project.Name }
 func (i projectItem) Title() string       { return i.project.Name }
-func (i projectItem) Description() string { return i.project.Summary }
+func (i projectItem) Description() string { return i.project.Tagline }
 
 type projectsModel struct {
 	ctx      *Context
@@ -31,7 +31,7 @@ func newProjectsModel(ctx *Context) projectsModel {
 	}
 	return projectsModel{
 		ctx:      ctx,
-		list:     newItemList("Projects", items, 0, 0),
+		list:     newItemList("Projects", items, 0, 0, ctx.zone, zoneProjects),
 		viewport: viewport.New(),
 	}
 }
@@ -58,6 +58,16 @@ func (m *projectsModel) refreshDetail() {
 	m.viewport.SetContent(renderProjectDetail(p, m.viewport.Width()))
 }
 
+func (m *projectsModel) openSelected() {
+	it, ok := m.list.SelectedItem().(projectItem)
+	if !ok {
+		return
+	}
+	m.openID = it.project.ID
+	m.refreshDetail()
+	m.viewport.GotoTop()
+}
+
 func (m projectsModel) Update(msg tea.Msg) (projectsModel, tea.Cmd) {
 	if m.openID != "" {
 		if key, ok := msg.(tea.KeyPressMsg); ok && key.String() == "esc" {
@@ -70,11 +80,15 @@ func (m projectsModel) Update(msg tea.Msg) (projectsModel, tea.Cmd) {
 	}
 
 	if key, ok := msg.(tea.KeyPressMsg); ok && key.String() == "enter" {
-		if it, ok := m.list.SelectedItem().(projectItem); ok {
-			m.openID = it.project.ID
-			m.refreshDetail()
-			return m, nil
+		m.openSelected()
+		return m, nil
+	}
+
+	if consumed, open := handleListPointer(m.ctx.zone, zoneProjects, &m.list, msg); consumed {
+		if open {
+			m.openSelected()
 		}
+		return m, nil
 	}
 
 	var cmd tea.Cmd
@@ -90,7 +104,7 @@ func (m projectsModel) View() string {
 }
 
 func (m *projectsModel) applyTheme() {
-	restyleList(&m.list)
+	restyleList(&m.list, m.ctx.zone, zoneProjects)
 	if m.openID != "" {
 		m.refreshDetail()
 	}
@@ -117,7 +131,7 @@ func renderProjectDetail(p Project, width int) string {
 		b.WriteString("\n\n")
 		for _, link := range projectLinks(p) {
 			b.WriteString(styleFaint().Render(padLinkLabel(link.Label)))
-			b.WriteString(styleMuted().Render(link.Value))
+			b.WriteString(styleMuted().Render(displayLinkValue(link.Value)))
 			b.WriteString("\n")
 		}
 	}
@@ -137,10 +151,6 @@ func renderProjectDetail(p Project, width int) string {
 		b.WriteString("\n")
 	}
 
-	if len(p.Tech) > 0 {
-		b.WriteString("\n\n")
-		b.WriteString(joinChips(p.Tech))
-	}
 	b.WriteString("\n\n")
 	b.WriteString(styleFaint().Render("esc back to the list"))
 	return lipgloss.NewStyle().Padding(1, 1, 0, 1).Render(b.String())

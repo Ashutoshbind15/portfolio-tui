@@ -1,9 +1,9 @@
 package main
 
 // Static portfolio content, kept in sync with portfolio-new.
-// Home and the project list use the short card copy; opening a project
-// uses the individual page text from the site (what / why / where /
-// technicals / upcoming), without the gallery.
+// Home and the project list use the site's card copy (tagline + summary).
+// Opening a project uses the individual page text (what / why / where /
+// technicals / upcoming) and the same Where-chip labels, without the gallery.
 
 type Profile struct {
 	Name     string
@@ -32,12 +32,12 @@ func profile() Profile {
 		Website:  "ashutoshbind.com",
 		GitHub:   "github.com/Ashutoshbind15",
 		X:        "x.com/Ashutosh_Bind15",
-		LinkedIn: "linkedin.com/in/ashutosh-bind-56806b22b",
+		LinkedIn: "in.linkedin.com/in/ashutosh-bind-56806b22b",
 		SSH:      "go run github.com/Ashutoshbind15/portfolio-tui@main",
 		Location: "Navsari, India",
 		Bullets: []string{
-			"Solo developing apps around chess-analysis, local llms, design and much more",
-			"Open Sourcing some of my projects, tools and journey",
+			"I create end-to-end web and AI apps with TS, React and other tools",
+			"Building VaryPane, SSVG, SliceSeeker and more",
 		},
 		Contact: []string{
 			"Available for freelance, contract-based, or other interesting work",
@@ -64,14 +64,10 @@ func contactRows(p Profile) []contactRow {
 	return out
 }
 
-type NpmPackage struct {
-	Name string
-	URL  string
-}
-
-type ProjectLinkExtra struct {
+// ProjectLink is a Where-section chip from the site (label + href/value).
+type ProjectLink struct {
 	Label string
-	URL   string
+	Value string
 }
 
 type Project struct {
@@ -84,23 +80,34 @@ type Project struct {
 	Why        string
 	Technicals string
 	Upcoming   []string
-	Detail     string
-	GitHub     string
-	Site       string
-	SSH        string
-	Packages   string
-	Npm        []NpmPackage
-	More       []ProjectLinkExtra
-	Tech       []string
+	Links      []ProjectLink
 }
 
 func projects() []Project {
 	return []Project{
 		{
+			ID:         "varypane",
+			Name:       "VaryPane",
+			Kind:       "SaaS",
+			Summary:    "Cloud-hosted parallel UI agents with starter templates, prompt libraries, and streaming previews.",
+			Tagline:    "Parallel UI-generation agents in the cloud",
+			What:       "Parallel UI-generation agents in the cloud. Pick a starter template, keep a reusable prompt library, attach skills, and compare models side by side — results stream in real time. Runs pi-coding-agent inside every sandbox.",
+			Why:        "Visual comparison — and picking the best bits out of generated UIs — is usually very helpful, especially for developers doing backend work, people new to design, or anyone who just doesn't have the time for a skill this demanding. The cloud version scales and improves that workflow for hosting and for end users.",
+			Technicals: "BYOK for OpenRouter and Upstash Box. Parallel agent sandboxes per session, a dedicated preview gateway, labelled box ownership, and self-hosted secret storage via Infisical.",
+			Upcoming: []string{
+				"Screenshot-to-agent input — iterate from a wireframe or your current design",
+				"GitHub repo connections and agent-loop iterations on one-shot designs",
+				"Scripted environment setup",
+			},
+			Links: []ProjectLink{
+				{Label: "site", Value: "https://varypane.com"},
+			},
+		},
+		{
 			ID:         "scribblesvg",
 			Name:       "ScribbleSVG",
 			Kind:       "OSS",
-			Summary:    "SVG diagramming toolkit with a hand-drawn look — React editor plus a renderer you can drop in anywhere.",
+			Summary:    "TypeScript core and React utilities for hand-drawn SVG diagrams on an infinite canvas.",
 			Tagline:    "Hand-drawn diagramming toolkit",
 			What:       "A featherlight diagramming toolkit that renders hand-drawn-style SVGs — a TypeScript core plus React utilities for an infinite canvas and a drop-in renderer.",
 			Why:        "I plan and reason systems by drawing. I wanted something with fewer dependencies than the usual options, and a lighter base for a diagram editor built on existing browser SVG primitives.",
@@ -111,39 +118,19 @@ func projects() []Project {
 				"Custom themes and canvas styles",
 				"SVG pack imports and image-to-SVG tracing",
 			},
-			GitHub: "https://github.com/Ashutoshbind15/ScribbleSVG",
-			Npm: []NpmPackage{
-				{Name: "@scribblesvg/core", URL: "https://www.npmjs.com/package/@scribblesvg/core"},
-				{Name: "@scribblesvg/react-utils", URL: "https://www.npmjs.com/package/@scribblesvg/react-utils"},
+			Links: []ProjectLink{
+				{Label: "GitHub", Value: "https://github.com/Ashutoshbind15/ScribbleSVG"},
+				{Label: "core", Value: "https://www.npmjs.com/package/@scribblesvg/core"},
+				{Label: "react-utils", Value: "https://www.npmjs.com/package/@scribblesvg/react-utils"},
+				{Label: "Playground", Value: "https://scribblesvg.ashutoshbind.com"},
+				{Label: "Docs", Value: "https://scribblesvg-docs.ashutoshbind.com"},
 			},
-			More: []ProjectLinkExtra{
-				{Label: "play", URL: "https://scribblesvg.ashutoshbind.com"},
-				{Label: "docs", URL: "https://scribblesvg-docs.ashutoshbind.com"},
-			},
-			Tech: []string{"React", "TypeScript", "Node.js"},
-		},
-		{
-			ID:         "varipane",
-			Name:       "VariPane",
-			Kind:       "SaaS",
-			Summary:    "Spin parallel agent sandboxes to compare prompts and models, then preview each result through a proxied Vite URL.",
-			Tagline:    "Parallel UI-generation agents in the cloud",
-			What:       "Parallel UI-generation agents in the cloud. Pick a starter template, keep a reusable prompt library, attach skills, and compare models side by side — results stream in real time. Runs pi-coding-agent inside every sandbox.",
-			Why:        "Visual comparison — and picking the best bits out of generated UIs — is usually very helpful, especially for developers doing backend work, people new to design, or anyone who just doesn't have the time for a skill this demanding. The cloud version scales and improves that workflow for hosting and for end users.",
-			Technicals: "BYOK for OpenRouter and Upstash Box. Parallel agent sandboxes per session, a dedicated preview gateway, labelled box ownership, and self-hosted secret storage via Infisical.",
-			Upcoming: []string{
-				"Screenshot-to-agent input — iterate from a wireframe or your current design",
-				"GitHub repo connections and agent-loop iterations on one-shot designs",
-				"Scripted environment setup",
-			},
-			Site: "https://varipane.com",
-			Tech:   []string{"React", "TypeScript", "Node.js", "Vite", "Docker"},
 		},
 		{
 			ID:         "sliceseeker",
 			Name:       "SliceSeeker",
 			Kind:       "OSS",
-			Summary:    "Segment and chunk video, then search it with multimodal, transcript, and frame embeddings — fused with RRF ranking.",
+			Summary:    "Ask in plain text, get back exact moments from long-form video via fused transcript and frame embeddings.",
 			Tagline:    "Self-hostable semantic search inside long-form video",
 			What:       "Semantic search inside long-form video. Ask in plain text and get near-exact moments back — a line in a talk, a slide, a take you need. Transcript, frame, and multimodal embeddings fused with weighted Reciprocal Rank Fusion; collections keep each search space focused.",
 			Why:        "Drop-in semantic video search as an internal service — precise timestamps without owning the indexing stack, with workers you can scale to your workload.",
@@ -153,18 +140,32 @@ func projects() []Project {
 				"Multimodal queries — image, video, or speech in, not just text",
 				"Worker stress-testing toward metric-based autoscaling",
 			},
-			GitHub:   "https://github.com/Ashutoshbind15/SliceSeeker",
-			Packages: "https://github.com/Ashutoshbind15?tab=packages&repo_name=SliceSeeker",
-			More: []ProjectLinkExtra{
-				{Label: "docs", URL: "https://sliceseeker.ashutoshbind.com"},
+			Links: []ProjectLink{
+				{Label: "GitHub", Value: "https://github.com/Ashutoshbind15/SliceSeeker"},
+				{Label: "GHCR images", Value: "https://github.com/Ashutoshbind15?tab=packages&repo_name=SliceSeeker"},
+				{Label: "Docs", Value: "https://sliceseeker.ashutoshbind.com"},
 			},
-			Tech: []string{"React", "TypeScript", "Node.js", "PostgreSQL", "Gemini", "Docker"},
+		},
+		{
+			ID:         "termchess",
+			Name:       "TermChess",
+			Kind:       "Service",
+			Summary:    "Real-time multiplayer chess with time controls, or solo games against rated bots: all over SSH.",
+			Tagline:    "Chess over SSH, in your terminal",
+			What:       "Chess over SSH — real-time multiplayer with time controls, or solo games against rated bots.",
+			Why:        "For a deeper understanding of SSH-based client-server and game architectures — Bubble Tea's update loop follows the Elm Architecture — and for fun!",
+			Technicals: "A Go server serves the Bubble Tea TUI over Wish/SSH. Shared managers own multiplayer state, clocks, and bot games; Postgres keeps history. Bots call a self-hosted lc0 engine behind a small JSON move API.",
+			Links: []ProjectLink{
+				{Label: "ssh", Value: "ssh -p 58303 tchess.ashutoshbind.com"},
+				{Label: "Marketing site", Value: "https://termchess.ashutoshbind.com"},
+				{Label: "GitHub", Value: "https://github.com/Ashutoshbind15/term-chess"},
+			},
 		},
 		{
 			ID:         "wafercms",
 			Name:       "WaferCMS",
 			Kind:       "OSS",
-			Summary:    "Self-hostable MIT CMS with diagrams and rich text as first-class fields, plus admin agents for collection work.",
+			Summary:    "Schema-driven CMS with rich text, diagram fields, and opt-in AI agents: self-hostable.",
 			Tagline:    "Self-hostable CMS for complex content",
 			What:       "A self-hostable, MIT-licensed CMS where complex content is first-class — rich text and hand-drawn ScribbleSVG diagrams ship as native field types. AI features are opt-in, including an agent that can manipulate the CMS with the help of tool calls.",
 			Why:        "I wanted richer content building blocks as native field types, and content that's easier for agents to reach and reshape. Built for this portfolio (blogs coming soon, powered by this CMS itself), then matured into a standalone product.",
@@ -173,26 +174,27 @@ func projects() []Project {
 				"Remote MCP server so agents can connect directly to your CMS",
 				"Agent loops for diagram iterations",
 			},
-			GitHub:   "https://github.com/Ashutoshbind15/WaferCMS",
-			Packages: "https://github.com/Ashutoshbind15?tab=packages&repo_name=WaferCMS",
-			More: []ProjectLinkExtra{
-				{Label: "docs", URL: "https://wafercms.ashutoshbind.com"},
+			Links: []ProjectLink{
+				{Label: "GitHub", Value: "https://github.com/Ashutoshbind15/WaferCMS"},
+				{Label: "GHCR images", Value: "https://github.com/Ashutoshbind15?tab=packages&repo_name=WaferCMS"},
+				{Label: "Docs", Value: "https://wafercms.ashutoshbind.com"},
 			},
-			Tech: []string{"React", "TypeScript", "Node.js", "Docker"},
 		},
 		{
-			ID:         "termchess",
-			Name:       "Term Chess",
-			Kind:       "Service",
-			Summary:    "SSH TUI chess server — multiplayer time controls or solo games against bots.",
-			Tagline:    "Chess over SSH, in your terminal",
-			What:       "Chess over SSH — real-time multiplayer with time controls, or solo games against rated bots.",
-			Why:        "For a deeper understanding of SSH-based client-server and game architectures — Bubble Tea's update loop follows the Elm Architecture — and for fun!",
-			Technicals: "A Go server serves the Bubble Tea TUI over Wish/SSH. Shared managers own multiplayer state, clocks, and bot games; Postgres keeps history. Bots call a self-hosted lc0 engine behind a small JSON move API.",
-			GitHub:     "https://github.com/Ashutoshbind15/term-chess",
-			Site:       "https://termchess.ashutoshbind.com",
-			SSH:        "ssh -p 58303 tchess.ashutoshbind.com",
-			Tech:       []string{"Go", "PostgreSQL", "Docker"},
+			ID:         "aiuicomparator",
+			Name:       "AI UI Comparator",
+			Kind:       "OSS",
+			Summary:    "Compare how AI models generate UI locally: isolated sandboxes, reusable prompts, side-by-side results.",
+			Tagline:    "Local side-by-side AI UI generation",
+			What:       "A local tool for side-by-side comparison of how AI models generate UI. A custom pi-agent runs a tight look → read → write/edit loop with four tools, and each worker is isolated by Anthropic's sandbox-runtime.",
+			Why:        "Comparing UI-capable models meant juggling prompts, starters, and sandboxes by hand. This is the local answer — reusable prompts, isolated workers, side-by-side results, all on your machine.",
+			Technicals: "Installable on Linux with a single script. Express API + React UI; Postgres for batches, prompts, and run state. Each session gets an isolated workdir from a starter template with network isolation except OpenRouter for model calls; agent events stream over SSE; completed runs launch managed Vite previews with a port registry that can reap orphans.",
+			Upcoming: []string{
+				"Replace the Postgres container with SQLite to simplify operations",
+			},
+			Links: []ProjectLink{
+				{Label: "GitHub", Value: "https://github.com/Ashutoshbind15/ai-ui-comparator"},
+			},
 		},
 	}
 }
@@ -224,20 +226,21 @@ func experiences() []Experience {
 			Role:    "Indie Hacking",
 			Period:  "Jul 2025 – Present",
 			Current: true,
-			Summary: "Product planning, experimentation, and building products and prototypes — from custom frameworks and browser-based site-builders to chess analysis engines, with deep learning around chess, local LLMs, and Electron apps.",
+			Summary: "Product design and end-to-end software development",
 			Highlights: []string{
-				"Shipped multiple open-source projects and developer tools.",
-				"Developing SaaS products around chess analysis, local LLMs, UI analysis with remote sandboxes etc.",
+				"SaaS: VaryPane, and more in the works — chess analysis and improvement app, Electron app for local models, component library for content software.",
+				"Open source: ScribbleSVG, SliceSeeker, TermChess, WaferCMS, and AI UI Comparator.",
 			},
 			Tech: []string{
-				"Product Planning",
-				"Experimentation",
-				"Custom Frameworks",
-				"Site Builders",
-				"Chess Analysis",
-				"Deep Learning",
+				"TypeScript",
+				"React",
+				"Next.js",
+				"Go",
+				"PostgreSQL",
+				"Docker",
+				"DevOps",
+				"AI Agents",
 				"Local LLMs",
-				"Electron",
 				"Open Source",
 			},
 		},
@@ -306,13 +309,11 @@ type StackCategory struct {
 
 func stackCategories() []StackCategory {
 	return []StackCategory{
-		{Name: "Frontend", Items: []string{"React", "Next.js", "TypeScript", "Tailwind CSS", "Vite", "Electron", "shadcn/ui"}},
-		{Name: "Backend", Items: []string{"Node.js", "Go", "Java"}},
-		{Name: "Databases", Items: []string{"PostgreSQL", "Drizzle"}},
-		{Name: "Cloud & Ops", Items: []string{"Docker", "Linux", "Bash"}},
-		{Name: "Testing", Items: []string{"Vitest", "JUnit"}},
-		{Name: "Workflow", Items: []string{"Git", "GitHub", "pnpm", "ESLint"}},
-		{Name: "AI & LLMs", Items: []string{"Gemini", "Ollama"}},
+		{Name: "Frontend", Items: []string{"React", "Next.js", "Tailwind CSS", "shadcn/ui"}},
+		{Name: "Backend & Databases", Items: []string{"Node.js", "TypeScript", "Go", "Java", "Electron", "PostgreSQL", "MongoDB", "Drizzle"}},
+		{Name: "Cloud & Ops", Items: []string{"AWS", "Railway", "Docker", "Caddy", "Linux", "Bash"}},
+		{Name: "Testing", Items: []string{"JUnit", "Vitest"}},
+		{Name: "Workflow & AI", Items: []string{"Git", "GitHub", "pnpm", "Cursor", "Gemini", "Qwen", "OpenCode"}},
 	}
 }
 

@@ -16,6 +16,7 @@ type Context struct {
 	width  int
 	height int
 	innerW int
+	hover  string
 }
 
 type keyMap struct {
@@ -240,6 +241,7 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.sel.press(msg.X, msg.Y)
 			return m, nil
 		}
+		m.trackHover(msg)
 		if m.hitNavZone(msg) {
 			m.sel.clear()
 			return m.handleNavClick(msg)
@@ -250,8 +252,17 @@ func (m appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.sel.down {
 			m.sel.drag(msg.X, msg.Y)
 			if m.sel.dragging {
+				m.ctx.hover = ""
 				return m, nil
 			}
+		}
+		if !m.showSplash {
+			m.trackHover(msg)
+		}
+
+	case tea.MouseWheelMsg:
+		if !m.showSplash && m.hitNavZone(msg) {
+			return m, nil
 		}
 
 	case tea.MouseReleaseMsg:
@@ -316,7 +327,11 @@ func (m appModel) splitRule(junction string) string {
 
 func (m appModel) headerView() string {
 	p := profile()
-	brand := styleBrand().Render(fmt.Sprintf(">_ %s", p.Name))
+	brandSt := styleBrand()
+	if m.hovering("brand") {
+		brandSt = brandSt.Foreground(lipgloss.Color(colorAccent))
+	}
+	brand := brandSt.Render(fmt.Sprintf(">_ %s", p.Name))
 	if m.ctx.zone != nil {
 		brand = m.ctx.zone.Mark("brand", brand)
 	}
@@ -390,30 +405,39 @@ func (m appModel) splashView() tea.View {
 	return m.finishView(output)
 }
 
-func (m appModel) hitNavZone(msg tea.MouseClickMsg) bool {
-	if m.ctx.zone == nil {
-		return false
-	}
-	if m.ctx.zone.Get("brand").InBounds(msg) {
-		return true
-	}
-	if m.ctx.zone.Get("theme-cycle").InBounds(msg) {
-		return true
-	}
-	if m.ctx.zone.Get("nav-toggle").InBounds(msg) {
-		return true
-	}
+func (m *appModel) trackHover(msg tea.MouseMsg) {
+	m.ctx.hover = m.hitZoneID(msg)
+}
+
+func (m appModel) navZoneIDs() []string {
+	ids := []string{"brand", "theme-cycle", "nav-toggle"}
 	for _, th := range allThemes() {
-		if m.ctx.zone.Get("theme-" + th.ID).InBounds(msg) {
-			return true
-		}
+		ids = append(ids, "theme-"+th.ID)
 	}
 	for _, page := range navPages() {
-		if m.ctx.zone.Get("nav-" + string(page)).InBounds(msg) {
-			return true
+		ids = append(ids, "nav-"+string(page))
+	}
+	return ids
+}
+
+func (m appModel) hitZoneID(msg tea.MouseMsg) string {
+	if m.ctx.zone == nil {
+		return ""
+	}
+	for _, id := range m.navZoneIDs() {
+		if m.ctx.zone.Get(id).InBounds(msg) {
+			return id
 		}
 	}
-	return false
+	return ""
+}
+
+func (m appModel) hitNavZone(msg tea.MouseMsg) bool {
+	return m.hitZoneID(msg) != ""
+}
+
+func (m appModel) hovering(id string) bool {
+	return m.ctx.hover == id
 }
 
 func (m appModel) handleNavClick(msg tea.MouseClickMsg) (appModel, tea.Cmd) {

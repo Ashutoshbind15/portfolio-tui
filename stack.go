@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strings"
+
 	"charm.land/bubbles/v2/tree"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -60,13 +62,50 @@ func (m *stackModel) SetSize(width, height int) {
 }
 
 func (m stackModel) Update(msg tea.Msg) (stackModel, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.MouseMotionMsg:
+		if line := m.lineAt(msg); line >= 0 {
+			if m.tree.YOffset() != line {
+				m.tree.SetYOffset(line)
+			}
+			return m, nil
+		}
+	case tea.MouseClickMsg:
+		if line := m.lineAt(msg); line >= 0 {
+			if m.tree.YOffset() != line {
+				m.tree.SetYOffset(line)
+			}
+			m.tree.ToggleCurrentNode()
+			return m, nil
+		}
+	}
 	var cmd tea.Cmd
 	m.tree, cmd = m.tree.Update(msg)
 	return m, cmd
 }
 
+func (m stackModel) lineAt(msg tea.MouseMsg) int {
+	if m.ctx.zone == nil {
+		return -1
+	}
+	for i := 0; i < m.tree.Height(); i++ {
+		if m.ctx.zone.Get(stackZoneID(i)).InBounds(msg) {
+			return m.tree.ViewportYOffset() + i
+		}
+	}
+	return -1
+}
+
 func (m stackModel) View() string {
-	return m.tree.View()
+	view := m.tree.View()
+	if m.ctx.zone == nil {
+		return view
+	}
+	lines := strings.Split(view, "\n")
+	for i, line := range lines {
+		lines[i] = m.ctx.zone.Mark(stackZoneID(i), line)
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (m *stackModel) applyTheme() {

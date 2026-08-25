@@ -1,9 +1,14 @@
 package main
 
 import (
+	"fmt"
+	"io"
+	"strings"
+
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/list"
 	"charm.land/lipgloss/v2"
+	zone "github.com/lrstanley/bubblezone/v2"
 )
 
 // Active palette; applyTheme swaps these. Seeded with Pumice so styles
@@ -38,28 +43,33 @@ func styleNavActive() lipgloss.Style {
 		Background(lipgloss.Color(colorSurface))
 }
 
-func styleNavIcon(active bool) lipgloss.Style {
+func styleNavIcon(active, hover bool) lipgloss.Style {
 	s := lipgloss.NewStyle().
 		Width(navIconWidth).
 		Height(1).
 		Align(lipgloss.Center, lipgloss.Center)
-	if active {
+	if active || hover {
 		s = s.Background(lipgloss.Color(colorSurface))
 	}
 	return s
 }
 
-func styleNavGap(active bool) lipgloss.Style {
+func styleNavGap(active, hover bool) lipgloss.Style {
 	s := lipgloss.NewStyle().Width(1).Height(1)
-	if active {
+	if active || hover {
 		s = s.Background(lipgloss.Color(colorSurface))
 	}
 	return s
 }
 
-func styleNavLabel(active bool) lipgloss.Style {
+func styleNavLabel(active, hover bool) lipgloss.Style {
 	if active {
 		return styleNavActive()
+	}
+	if hover {
+		return styleNavIdle().
+			Foreground(lipgloss.Color(colorBright)).
+			Background(lipgloss.Color(colorSurface))
 	}
 	return styleNavIdle()
 }
@@ -163,11 +173,27 @@ func itemStyles() list.DefaultItemStyles {
 	return s
 }
 
-func newItemList(title string, items []list.Item, width, height int) list.Model {
+type zonedDelegate struct {
+	list.DefaultDelegate
+	zone   *zone.Manager
+	prefix string
+}
+
+func (d zonedDelegate) Render(w io.Writer, m list.Model, index int, item list.Item) {
+	var b strings.Builder
+	d.DefaultDelegate.Render(&b, m, index, item)
+	out := b.String()
+	if d.zone != nil {
+		out = d.zone.Mark(listZoneID(d.prefix, index), out)
+	}
+	fmt.Fprint(w, out)
+}
+
+func newItemList(title string, items []list.Item, width, height int, z *zone.Manager, prefix string) list.Model {
 	d := list.NewDefaultDelegate()
 	d.SetSpacing(1)
 	d.Styles = itemStyles()
-	l := list.New(items, d, width, height)
+	l := list.New(items, zonedDelegate{DefaultDelegate: d, zone: z, prefix: prefix}, width, height)
 	l.Title = title
 	l.Styles = list.DefaultStyles(!currentTheme().Light)
 	l.Styles.Title = styleHeading()
@@ -178,11 +204,11 @@ func newItemList(title string, items []list.Item, width, height int) list.Model 
 	return l
 }
 
-func restyleList(l *list.Model) {
+func restyleList(l *list.Model, z *zone.Manager, prefix string) {
 	d := list.NewDefaultDelegate()
 	d.SetSpacing(1)
 	d.Styles = itemStyles()
-	l.SetDelegate(d)
+	l.SetDelegate(zonedDelegate{DefaultDelegate: d, zone: z, prefix: prefix})
 	l.Styles = list.DefaultStyles(!currentTheme().Light)
 	l.Styles.Title = styleHeading()
 }
